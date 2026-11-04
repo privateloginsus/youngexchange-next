@@ -1,33 +1,24 @@
-# YoungExchange Next — prima versione
+# YoungExchange — versione unificata di recupero
 
-Sito statico per GitHub Pages con Supabase Auth, lettura wallet da Supabase, prezzi CoinGecko, grafici, interfaccia responsive e Crisp integrato.
+Base: ZIP admin-completo ricevuto dall’utente. `app.js` sostituito con la versione amministrativa estesa di `main`, con correzioni del flusso di recupero password e controllo sessione prima dell’SMS. Nessun dato o configurazione Supabase è stato cancellato.
 
-## Pubblicazione
-1. Apri `config.js` e sostituisci `PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE` con la **Publishable Key** (`sb_publishable_...`) del progetto Supabase `youngexchange-next`.
-2. Non inserire mai nel sito o nel repository chiavi Supabase `secret` / `service_role`, password del database, Twilio Auth Token o altri segreti.
-3. Carica **i file contenuti in questa cartella** nella radice del repository `privateloginsus/youngexchange-next` (non la cartella contenitore).
-4. GitHub → repository → Settings → Pages → Deploy from a branch → `main` → `/(root)` → Save.
-5. Apri `https://privateloginsus.github.io/youngexchange-next/` dopo la pubblicazione.
-6. In Supabase Authentication → URL Configuration: Site URL `https://privateloginsus.github.io/youngexchange-next/`, Redirect URLs `https://privateloginsus.github.io/youngexchange-next/**`.
+## Cosa contiene
+- Supabase Auth: registrazione, login, invio link recupero, schermata nuova password. Da verificare con email reale.
+- Verifica telefono: richiesta e conferma OTP con Supabase Auth; necessita provider SMS attivo e sessione valida.
+- Pannello Admin: otto viste, alcune in lettura e alcune con operazioni condizionate a RPC Supabase. Se una RPC manca viene mostrato un errore reale, non una finta operazione.
+- Portafogli, attività e prezzi: collegamenti presenti; dipendono dalle tabelle/RLS e dall’API CoinGecko.
+- Crisp: iframe di assistenza.
 
-## Cosa funziona
-- Registrazione, conferma email e login email/password via Supabase Auth (se email e SMTP sono configurati e i limiti del provider consentono la consegna).
-- Recupero password via email e aggiornamento della password tramite il link Supabase; da verificare con un test end-to-end prima del lancio.
-- Profili e wallet creati dal trigger Supabase già installato, visualizzazione dei saldi in sola lettura.
-- Prezzi reali da CoinGecko API, aggiornamento periodico; possono verificarsi rate limit, indisponibilità e ritardi.
-- Grafici basati sulla sparkline CoinGecko quando disponibile.
-- Lettura richieste e registro movimenti già presenti in Supabase.
-- Chat Crisp integrata nella pagina Assistenza tramite iframe.
+## Non incluso / non verificato
+Non sono disponibili in questo ZIP schema SQL, migrazioni, Edge Functions, configurazioni private Supabase, credenziali Resend o Twilio, né test con account reali. NON si può dichiarare tutto operativo end-to-end. Depositi/prelievi esterni, ordini e swap reali non sono implementati né attestati. Non approvare movimenti come eseguiti senza conferma esterna e riconciliazione.
 
-## Cosa NON è ancora operativo
-- Registrazione/associazione/verifica del numero via Twilio nell'interfaccia (il provider è configurato, ma il flusso UI e la verifica effettiva restano da realizzare).
-- Depositi, prelievi, trasferimenti, acquisti, vendite e swap: pulsanti interattivi informativi, **non** modificano saldi né inviano denaro.
-- Order book e trading reale: non vengono simulati con dati inventati.
-- Verifica end-to-end della password recovery, KYC/AML, autorizzazioni regolamentari, infrastruttura di custodia e pagamenti.
+## Pubblicazione sicura
+1. Fare backup del repository e dell'attuale configurazione Pages.
+2. Usare un solo ramo di pubblicazione (consigliato `main`), senza cancellare l'altro finché non è verificato.
+3. Caricare i file nella root del ramo scelto; configurare Pages per quel ramo e `/(root)`.
+4. Controllare Actions (deploy verde), aprire /app.js, testare login, recovery, OTP e ogni sezione Admin.
+5. In Supabase Authentication > URL Configuration impostare Site URL `https://youngexchange.eu/` e Redirect URLs `https://youngexchange.eu/**` (includere altri domini solo se utilizzati).
+6. Non caricare chiavi segrete o SMTP password in `config.js` o GitHub Pages.
 
-## Sicurezza e note tecniche
-- Le tabelle Supabase hanno RLS di sola lettura per i proprietari, come impostato nei passaggi precedenti. Verifica sempre le policy prima del rilascio.
-- Il trigger di creazione wallet agisce sui **nuovi** utenti; gli utenti creati prima del trigger non vengono retroattivamente popolati.
-- La tabella `profiles` non ha ancora una policy di update: il nome visualizzato passato alla registrazione in `user_metadata` non viene sincronizzato automaticamente al profilo.
-- Per un prodotto finanziario reale sono necessari un ledger a partita doppia, operazioni atomiche, idempotenza, audit, verifiche di identità, controllo antifrode e revisione legale.
-- Il sito usa libreria Supabase UMD e font esterni via CDN: è necessaria connessione Internet.
+## Resend e mittente noreply
+Il sito pubblico NON invia direttamente via Resend: è Supabase Auth che invia tramite SMTP Resend. In Supabase Authentication > SMTP configurare host/porta/utente/password SMTP ottenuti da Resend, sender `YoungExchange <noreply@youngexchange.eu>` SOLO se il dominio è verificato e l'indirizzo è autorizzato dal provider. Il mittente e la password SMTP non sono verificabili da questi file. Configurare i template Auth nel pannello Supabase usando `{{ .ConfirmationURL }}` e il file `EMAIL_TEMPLATE_RECOVERY.html` come base. Testare con un account dedicato.
