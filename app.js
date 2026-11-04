@@ -24,8 +24,93 @@ const adminOperationLabels={withdrawal:'Prelievo',deposit:'Deposito',transfer:'T
 const adminDate=v=>v?new Date(v).toLocaleString('it-IT'):'—';
 const adminErr=e=>{toast('Amministrazione: '+(e?.message||String(e)))};
 async function adminRpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw error;return data||[]}
-function adminPage(){return heading('Amministrazione','Gestione riservata degli utenti, dei wallet e delle richieste.')+'<div class="card">Caricamento dati amministrativi…</div>'}
-async function loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const root=$('pageContent');try{const [users,operations]=await Promise.all([adminRpc('admin_list_users'),adminRpc('admin_list_all_operations',{p_status:adminStatusFilter||null})]);if(!session||location.hash.slice(1).split('?')[0]!=='admin')return;const selected=users.find(u=>u.user_id===adminSelectedUser);const userOptions=users.map(u=>`<option value="${esc(u.user_id)}" ${u.user_id===adminSelectedUser?'selected':''}>${esc(u.email||u.display_name||u.user_id)}</option>`).join('');root.innerHTML=heading('Amministrazione','Utenti, saldi e richieste operative · accesso riservato')+`<div class="grid cols-3">${card('Utenti registrati',users.length)}${card('Richieste filtrate',operations.length)}${card('In attesa',operations.filter(r=>r.status==='pending').length,adminStatusFilter?'Nel filtro corrente':'Totale richieste')}</div><section class="card mt"><div class="section-head"><h3>Utenti e portafogli</h3><span class="small">${users.length} utenti</span></div><label for="adminUser">Seleziona utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>${userOptions}</select><div id="adminUserDetail" class="mt">${selected?'Caricamento wallet…':'Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.'}</div></section><section class="card mt"><div class="section-head"><h3>Richieste operative</h3><span class="small">Le richieste esterne non costituiscono prova di pagamento</span></div><label for="adminStatus">Filtra per stato</label><select id="adminStatus"><option value="">Tutte</option>${Object.entries(adminStatusLabels).map(([v,l])=>`<option value="${v}" ${adminStatusFilter===v?'selected':''}>${l}</option>`).join('')}</select><div class="table-wrap mt"><table><thead><tr><th>Data</th><th>Utente</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${operations.map(r=>`<tr><td>${esc(adminDate(r.created_at))}</td><td>${esc(users.find(u=>u.user_id===r.user_id)?.email||r.user_id)}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td><span class="tag">${esc(adminStatusLabels[r.status]||r.status)}</span></td><td>${r.operation_type==='withdrawal'&&r.status==='pending'?`<button class="secondary-btn" data-review="approve" data-request="${esc(r.id)}">Approva</button> <button class="secondary-btn" data-review="reject" data-request="${esc(r.id)}">Rifiuta</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="6">Nessuna richiesta.</td></tr>'}</tbody></table></div></section><section class="card mt"><div class="section-head"><h3>Crea richiesta di prelievo per un utente</h3><span class="tag">In attesa di approvazione</span></div><p class="small">La richiesta prenota il saldo disponibile. Non invia fondi a banche o blockchain.</p><form id="adminCreateForm"><label for="adminCreateUser">Utente</label><select id="adminCreateUser" required><option value="">— Seleziona —</option>${userOptions}</select><label for="adminCurrency">Valuta</label><select id="adminCurrency"><option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option></select><label for="adminAmount">Importo</label><input id="adminAmount" type="number" min="0.000000000001" step="any" required placeholder="Es. 100"><label for="adminDestinationType">Destinazione</label><select id="adminDestinationType"><option value="bank">IBAN bancario</option><option value="crypto">Indirizzo crypto</option></select><label for="adminDestinationAddress">IBAN / indirizzo</label><input id="adminDestinationAddress" required maxlength="256"><label for="adminDestinationNetwork">Rete crypto (se applicabile)</label><input id="adminDestinationNetwork" maxlength="80" placeholder="Es. Ethereum"><label for="adminDestinationName">Intestatario / destinatario</label><input id="adminDestinationName" maxlength="120"><label for="adminOperationDate">Data e ora operazione</label><input id="adminOperationDate" type="datetime-local" required><label for="adminNotes">Note amministrative</label><textarea id="adminNotes" rows="3" maxlength="2000"></textarea><div class="mt"><button class="primary" type="submit">Crea richiesta</button></div></form></section>`;root.querySelector('#adminUser').addEventListener('change',e=>{adminSelectedUser=e.target.value||null;loadAdminUser()});root.querySelector('#adminStatus').addEventListener('change',e=>{adminStatusFilter=e.target.value;loadAdmin()});root.querySelectorAll('[data-review]').forEach(b=>b.addEventListener('click',()=>adminReview(b.dataset.request,b.dataset.review)));root.querySelector('#adminCreateForm').addEventListener('submit',adminCreate);root.querySelector('#adminOperationDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);if(selected)await loadAdminUser();}catch(e){adminErr(e);root.innerHTML=heading('Amministrazione','Impossibile caricare i dati')+`<div class="notice">${esc(e.message)}</div>`}}
+function adminPage(){
+  const sections=[
+    ['users','Utenti e conti'],
+    ['deposits','Depositi'],
+    ['withdrawals','Prelievi'],
+    ['transactions','Transazioni'],
+    ['balances','Saldi'],
+    ['crypto','Crypto e cambi'],
+    ['history','Storico e controlli'],
+    ['settings','Impostazioni sito']
+  ];
+  return heading('Amministrazione','Centro di controllo YoungExchange')+
+    '<div class="card"><h3>YoungExchange Admin</h3>'+
+    '<p class="small">Seleziona una sezione amministrativa</p>'+
+    '<div class="grid cols-2">'+
+    sections.map(([id,label])=>
+      '<button type="button" class="secondary-btn" data-admin-section="'+id+'">'+esc(label)+'</button>'
+    ).join('')+
+    '</div></div>'+
+    '<div id="adminWorkspace" class="mt">Caricamento dati amministrativi…</div>';
+}
+  
+function adminSelectSection(section) {
+  const workspace = document.getElementById('adminWorkspace');
+  if (!workspace) return;
+
+  const labels = {
+    users: 'Utenti e conti',
+    deposits: 'Depositi',
+    withdrawals: 'Prelievi',
+    transactions: 'Transazioni',
+    balances: 'Saldi',
+    crypto: 'Crypto e cambi',
+    history: 'Storico e controlli',
+    settings: 'Impostazioni sito'
+  };
+
+  if (!Object.hasOwn(labels, section)) return;
+ if (section === 'users') {
+  workspace.innerHTML = '<section class="card"><h3>Utenti e conti</h3><p class="small">Caricamento utenti registrati...</p></section>';
+  loadAdminUsersSection();
+  return;
+}
+}
+  workspace.innerHTML =
+    '<section class="card">' +
+    '<h3>' + esc(labels[section]) + '</h3>' +
+    '<p class="small">Sezione in preparazione.</p>' +
+    '</section>';
+}
+ async function loadAdminUsersSection() {
+  const workspace = document.getElementById('adminWorkspace');
+  if (!workspace || !isAdmin) return;
+
+  try {
+    const users = await adminRpc('admin_list_users');
+
+    workspace.innerHTML =
+      '<section class="card">' +
+      '<h3>Utenti e conti</h3>' +
+      '<p class="small">Utenti registrati: ' + users.length + '</p>' +
+      '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Email</th><th>Nome</th><th>Registrazione</th></tr></thead>' +
+      '<tbody>' +
+      users.map(u =>
+        '<tr><td>' + esc(u.email || '-') + '</td>' +
+        '<td>' + esc(u.display_name || '-') + '</td>' +
+        '<td>' + esc(u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '-') + '</td></tr>'
+      ).join('') +
+      '</tbody></table></div></section>';
+  } catch (e) {
+    adminErr(e);
+    workspace.innerHTML =
+      '<section class="card"><h3>Utenti e conti</h3>' +
+      '<p class="small">Impossibile caricare gli utenti.</p></section>';
+  }
+}  
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-admin-section]');
+  if (!button) return;
+
+  adminSelectSection(button.dataset.adminSection);
+});
+ 
+async function loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const root=$('pageContent');try{const [users,operations]=await Promise.all([adminRpc('admin_list_users'),adminRpc('admin_list_all_operations',{p_status:adminStatusFilter||null})]);if(!session||location.hash.slice(1).split('?')[0]!=='admin')return;const selected=users.find(u=>u.user_id===adminSelectedUser);const userOptions=users.map(u=>`<option value="${esc(u.user_id)}" ${u.user_id===adminSelectedUser?'selected':''}>${esc(u.email||u.display_name||u.user_id)}</option>`).join('');root.innerHTML=adminPage();
+const adminWorkspace=document.getElementById('adminWorkspace');
+adminWorkspace.innerHTML=heading('Amministrazione','Utenti, saldi e richieste operative · accesso riservato')+`<div class="grid cols-3">${card('Utenti registrati',users.length)}${card('Richieste filtrate',operations.length)}${card('In attesa',operations.filter(r=>r.status==='pending').length,adminStatusFilter?'Nel filtro corrente':'Totale richieste')}</div><section class="card mt"><div class="section-head"><h3>Utenti e portafogli</h3><span class="small">${users.length} utenti</span></div><label for="adminUser">Seleziona utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>${userOptions}</select><div id="adminUserDetail" class="mt">${selected?'Caricamento wallet…':'Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.'}</div></section><section class="card mt"><div class="section-head"><h3>Richieste operative</h3><span class="small">Le richieste esterne non costituiscono prova di pagamento</span></div><label for="adminStatus">Filtra per stato</label><select id="adminStatus"><option value="">Tutte</option>${Object.entries(adminStatusLabels).map(([v,l])=>`<option value="${v}" ${adminStatusFilter===v?'selected':''}>${l}</option>`).join('')}</select><div class="table-wrap mt"><table><thead><tr><th>Data</th><th>Utente</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${operations.map(r=>`<tr><td>${esc(adminDate(r.created_at))}</td><td>${esc(users.find(u=>u.user_id===r.user_id)?.email||r.user_id)}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td><span class="tag">${esc(adminStatusLabels[r.status]||r.status)}</span></td><td>${r.operation_type==='withdrawal'&&r.status==='pending'?`<button class="secondary-btn" data-review="approve" data-request="${esc(r.id)}">Approva</button> <button class="secondary-btn" data-review="reject" data-request="${esc(r.id)}">Rifiuta</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="6">Nessuna richiesta.</td></tr>'}</tbody></table></div></section><section class="card mt"><div class="section-head"><h3>Crea richiesta di prelievo per un utente</h3><span class="tag">In attesa di approvazione</span></div><p class="small">La richiesta prenota il saldo disponibile. Non invia fondi a banche o blockchain.</p><form id="adminCreateForm"><label for="adminCreateUser">Utente</label><select id="adminCreateUser" required><option value="">— Seleziona —</option>${userOptions}</select><label for="adminCurrency">Valuta</label><select id="adminCurrency"><option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option></select><label for="adminAmount">Importo</label><input id="adminAmount" type="number" min="0.000000000001" step="any" required placeholder="Es. 100"><label for="adminDestinationType">Destinazione</label><select id="adminDestinationType"><option value="bank">IBAN bancario</option><option value="crypto">Indirizzo crypto</option></select><label for="adminDestinationAddress">IBAN / indirizzo</label><input id="adminDestinationAddress" required maxlength="256"><label for="adminDestinationNetwork">Rete crypto (se applicabile)</label><input id="adminDestinationNetwork" maxlength="80" placeholder="Es. Ethereum"><label for="adminDestinationName">Intestatario / destinatario</label><input id="adminDestinationName" maxlength="120"><label for="adminOperationDate">Data e ora operazione</label><input id="adminOperationDate" type="datetime-local" required><label for="adminNotes">Note amministrative</label><textarea id="adminNotes" rows="3" maxlength="2000"></textarea><div class="mt"><button class="primary" type="submit">Crea richiesta</button></div></form></section>`;adminWorkspace.querySelector('#adminUser').addEventListener('change',e=>{adminSelectedUser=e.target.value||null;loadAdminUser()});adminWorkspace.querySelector('#adminStatus').addEventListener('change',e=>{adminStatusFilter=e.target.value;loadAdmin()});adminWorkspace.querySelectorAll('[data-review]').forEach(b=>b.addEventListener('click',()=>adminReview(b.dataset.request,b.dataset.review)));adminWorkspace.querySelector('#adminCreateForm').addEventListener('submit',adminCreate);adminWorkspace.querySelector('#adminOperationDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);if(selected)await loadAdminUser();}catch(e){adminErr(e);root.innerHTML=adminPage();document.getElementById('adminWorkspace').innerHTML=heading('Amministrazione','Impossibile caricare i dati')+`<div class="notice">${esc(e.message)}</div>`}}
 async function loadAdminUser(){const target=$('adminUserDetail');if(!target)return;const id=adminSelectedUser;if(!id){target.textContent='Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.';return}target.textContent='Caricamento…';try{const [walletList,ops]=await Promise.all([adminRpc('admin_list_wallets',{p_user_id:id}),adminRpc('admin_list_operations',{p_user_id:id})]);if(adminSelectedUser!==id||!target.isConnected)return;target.innerHTML=`<h3>Wallet</h3><div class="table-wrap"><table><thead><tr><th>Valuta</th><th>Saldo</th><th>Impegnato</th><th>Disponibile</th></tr></thead><tbody>${walletList.map(w=>`<tr><td>${esc(w.currency)}</td><td>${fmt(w.total_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.reserved_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.available_balance,w.currency==='EUR'?2:8)}</td></tr>`).join('')||'<tr><td colspan="4">Nessun wallet.</td></tr>'}</tbody></table></div><h3 class="mt">Ultime operazioni (${ops.length})</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Destinazione</th></tr></thead><tbody>${ops.slice(0,30).map(r=>`<tr><td>${esc(adminDate(r.operation_date||r.created_at))}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td>${esc(adminStatusLabels[r.status]||r.status)}</td><td>${esc(r.destination_address||r.destination_iban||'—')}</td></tr>`).join('')||'<tr><td colspan="5">Nessuna operazione.</td></tr>'}</tbody></table></div>`}catch(e){adminErr(e);target.textContent='Errore nel caricamento dei dettagli.'}}
 async function adminReview(id,decision){if(!isAdmin)return;const verb=decision==='approve'?'approvare':'rifiutare';if(!confirm(`Vuoi ${verb} questa richiesta? L'approvazione non invia fondi all'esterno.`))return;try{const result=await adminRpc('review_youngexchange_withdrawal',{p_request_id:id,p_decision:decision});toast('Richiesta aggiornata: '+result);await loadAdmin()}catch(e){adminErr(e)}}
 async function adminCreate(e){e.preventDefault();if(!isAdmin)return;const form=e.currentTarget,button=form.querySelector('button[type=submit]');const val=id=>form.querySelector('#'+id).value.trim();const amount=Number(val('adminAmount'));const currency=val('adminCurrency'),type=val('adminDestinationType');if(!Number.isFinite(amount)||amount<=0){toast('Importo non valido');return}if(type==='bank'&&currency!=='EUR'){toast('Per IBAN seleziona EUR');return}if(type==='crypto'&&currency==='EUR'){toast('Per indirizzi crypto seleziona BTC, ETH o USDT');return}if(!confirm('Creare una richiesta in attesa e prenotare il saldo dell’utente? Non sarà inviato alcun pagamento esterno.'))return;button.disabled=true;try{await adminRpc('admin_create_withdrawal',{p_user_id:val('adminCreateUser'),p_currency:currency,p_amount:amount,p_destination_type:type,p_destination_address:val('adminDestinationAddress'),p_destination_network:val('adminDestinationNetwork')||null,p_destination_name:val('adminDestinationName')||null,p_operation_date:new Date(val('adminOperationDate')).toISOString(),p_idempotency_key:crypto.randomUUID(),p_admin_notes:val('adminNotes')||null});toast('Richiesta creata e saldo prenotato. Nessun invio esterno effettuato.');await loadPrivate();await loadAdmin()}catch(err){adminErr(err)}finally{button.disabled=false}}
