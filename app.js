@@ -67,7 +67,6 @@ function adminSelectSection(section) {
   loadAdminUsersSection();
   return;
 }
-}
   workspace.innerHTML =
     '<section class="card">' +
     '<h3>' + esc(labels[section]) + '</h3>' +
