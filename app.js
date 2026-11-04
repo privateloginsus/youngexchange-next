@@ -62,14 +62,45 @@ function adminSelectSection(section) {
   };
 
   if (!Object.hasOwn(labels, section)) return;
-
+ if (section === 'users') {
+  workspace.innerHTML = '<section class="card"><h3>Utenti e conti</h3><p class="small">Caricamento utenti registrati...</p></section>';
+  loadAdminUsersSection();
+  return;
+}
+}
   workspace.innerHTML =
     '<section class="card">' +
     '<h3>' + esc(labels[section]) + '</h3>' +
     '<p class="small">Sezione in preparazione.</p>' +
     '</section>';
 }
-   
+ async function loadAdminUsersSection() {
+  const workspace = document.getElementById('adminWorkspace');
+  if (!workspace || !isAdmin) return;
+
+  try {
+    const users = await adminRpc('admin_list_users');
+
+    workspace.innerHTML =
+      '<section class="card">' +
+      '<h3>Utenti e conti</h3>' +
+      '<p class="small">Utenti registrati: ' + users.length + '</p>' +
+      '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Email</th><th>Nome</th><th>Registrazione</th></tr></thead>' +
+      '<tbody>' +
+      users.map(u =>
+        '<tr><td>' + esc(u.email || '-') + '</td>' +
+        '<td>' + esc(u.display_name || '-') + '</td>' +
+        '<td>' + esc(u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '-') + '</td></tr>'
+      ).join('') +
+      '</tbody></table></div></section>';
+  } catch (e) {
+    adminErr(e);
+    workspace.innerHTML =
+      '<section class="card"><h3>Utenti e conti</h3>' +
+      '<p class="small">Impossibile caricare gli utenti.</p></section>';
+  }
+}  
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-admin-section]');
   if (!button) return;
