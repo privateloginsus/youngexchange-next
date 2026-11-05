@@ -22,3 +22,4 @@ Non sono disponibili in questo ZIP schema SQL, migrazioni, Edge Functions, confi
 
 ## Resend e mittente noreply
 Il sito pubblico NON invia direttamente via Resend: è Supabase Auth che invia tramite SMTP Resend. In Supabase Authentication > SMTP configurare host/porta/utente/password SMTP ottenuti da Resend, sender `YoungExchange <noreply@youngexchange.eu>` SOLO se il dominio è verificato e l'indirizzo è autorizzato dal provider. Il mittente e la password SMTP non sono verificabili da questi file. Configurare i template Auth nel pannello Supabase usando `{{ .ConfirmationURL }}` e il file `EMAIL_TEMPLATE_RECOVERY.html` come base. Testare con un account dedicato.
+Aggiornamento pubblicazione YoungExchange
