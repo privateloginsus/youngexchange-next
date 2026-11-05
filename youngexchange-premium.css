@@ -82,3 +82,34 @@ body{background:#04100d;background-image:radial-gradient(ellipse 72% 80% at 85% 
 /* Keep all UI accessible on narrow displays. */
 @media(max-width:800px){.sidebar{box-shadow:20px 0 55px #0009}.main .ye-ambient-wave{opacity:.22}.sidebar .ye-ambient-wave{bottom:14%;}}
 @media(prefers-reduced-motion:reduce){.ye-ambient *{animation:none!important}.side-brand .brandmark:before{animation:none!important}}
+
+
+/* PREMIUM PRO LIVE — a single unified visual environment */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+:root{--green:#23f2af;--border:#17533c}
+html,body{background:#03140f!important;font-family:'DM Sans',sans-serif!important}
+.app{position:relative!important;isolation:isolate;background:radial-gradient(ellipse at 52% 42%,#0b3023 0%,#03140f 65%)!important;min-height:100vh}
+.app>.ye-ambient{position:fixed!important;inset:0!important;z-index:-1!important;pointer-events:none!important;overflow:hidden!important;background:radial-gradient(ellipse at 70% 12%,#09684332,transparent 55%),radial-gradient(ellipse at 8% 85%,#00ff9920,transparent 47%)}
+.app>.ye-ambient .ye-ambient-wave{position:absolute!important;left:-15%!important;width:135%!important;height:46vh!important;bottom:-7%!important;border-radius:0!important;opacity:.8!important;transform:none!important;background:url('premium-pro-wave.svg') center / 100% 100% no-repeat!important;mask-image:linear-gradient(to top,transparent,#000 24%,#000 77%,transparent)!important;filter:drop-shadow(0 0 14px #0bff9d55)!important;animation:yeProWave 18s ease-in-out infinite alternate!important}
+.app>.ye-ambient .ye-ambient-wave-b{bottom:auto!important;top:-19%!important;opacity:.43!important;transform:rotate(180deg)!important;animation:yeProWaveTop 22s ease-in-out infinite alternate!important}
+.app>.ye-ambient .ye-ambient-grid{opacity:.14!important}
+.app>.ye-ambient .ye-ambient-stars{opacity:.25!important}
+@keyframes yeProWave{from{translate:-3% 2%;scale:1 .88}to{translate:3% -4%;scale:1.05 1.09}}
+@keyframes yeProWaveTop{from{translate:3% 0;scale:1 .94}to{translate:-3% 4%;scale:1.08 1.04}}
+.sidebar,.main{background:transparent!important;background-image:none!important;box-shadow:none!important;border:0!important;isolation:auto!important}
+.sidebar{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.main{min-width:0}
+.topbar{background:#041a12a1!important;backdrop-filter:blur(15px)!important}
+.page-content{position:relative}
+.card{background:linear-gradient(130deg,#092b20bc,#031b14ba 70%,#09291d9c)!important;border:1px solid #1bb27b67!important;border-radius:20px!important;box-shadow:0 15px 45px #0004,inset 0 1px 0 #2dffb01f!important;backdrop-filter:blur(15px)!important;transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}
+.card:hover{border-color:#17e5a09c!important;box-shadow:0 18px 50px #0005,0 0 25px #05ffad12!important}
+.page-heading h1,.topbar h2,.section-head h3,.metric,.side-brand{font-family:'Manrope',sans-serif!important;letter-spacing:-.035em}
+.page-heading h1{font-weight:800!important;letter-spacing:-.045em}
+.section-head h3{font-weight:800!important}
+.side-brand{font-weight:800!important}
+.asset-row{border-bottom-color:#2c785338!important}
+.app-footer{background:transparent!important;border:0!important}
+.ye-chart-controls button{transition:background .16s,border-color .16s!important}
+.chart{image-rendering:auto;touch-action:none}
+@media(max-width:800px){.app>.ye-ambient .ye-ambient-wave{width:190%!important;left:-45%!important;height:35vh!important}.sidebar{background:#031a13e8!important;backdrop-filter:blur(18px)}}
+@media(prefers-reduced-motion:reduce){.app>.ye-ambient .ye-ambient-wave{animation:none!important}.card{transition:none!important}}
