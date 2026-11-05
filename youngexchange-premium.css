@@ -37,3 +37,48 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #32e5a420}
 .app-footer{background:#071711b8}.app-footer>span:last-child{margin-left:auto;text-align:right}.ye-live{color:#36e8a7}
 @media(max-width:800px){.sidebar{overflow-y:auto}.ye-chart-controls{align-items:flex-start}.ye-chart-controls button{padding:7px 8px}.chart{height:270px}}
 @media(prefers-reduced-motion:reduce){.side-brand .brandmark:before{animation:none}*{scroll-behavior:auto!important}}
+
+
+/* YoungExchange Immersive V3: visual-only enhancement. All finance/auth logic unchanged. */
+:root{--ye-emerald:#22edab;--ye-soft:#b5f9dc;--ye-ink:#04110e}
+body{background:#04100d;background-image:radial-gradient(ellipse 72% 80% at 85% 5%,#0b4c3038,transparent 65%);}
+.app{isolation:isolate;background:#04120e;}
+.sidebar{background:linear-gradient(164deg,#03120e 0%,#03110d 48%,#05251a 100%)!important;border-right:0!important;box-shadow:16px 0 52px #00000035;isolation:isolate;}
+.main{position:relative;isolation:isolate;background:radial-gradient(ellipse 72% 52% at 76% 8%,#0a55322c,transparent 75%),linear-gradient(160deg,#04120e 5%,#061711 60%,#04120e);min-height:100vh;}
+.ye-ambient{position:absolute;inset:0;overflow:hidden;z-index:-1;pointer-events:none;isolation:isolate;}
+.sidebar>.ye-ambient{position:absolute;z-index:-1;}
+.main>.ye-ambient{position:absolute;z-index:-1;}
+.ye-ambient-glow{position:absolute;left:-40%;bottom:-15%;width:175%;height:75%;background:radial-gradient(ellipse at 52% 78%,#04e69b21,transparent 58%);filter:blur(20px);animation:yeBreathe 12s ease-in-out infinite alternate;}
+.main .ye-ambient-glow{left:8%;top:5%;bottom:auto;width:115%;height:92%;background:radial-gradient(ellipse at 60% 48%,#0ad08b10,transparent 62%);}
+.ye-ambient-grid{position:absolute;inset:0;background-image:linear-gradient(#14ffb008 1px,transparent 1px),linear-gradient(90deg,#14ffb008 1px,transparent 1px);background-size:65px 65px;mask-image:radial-gradient(ellipse at 65% 70%,#0008,transparent 72%);transform:perspective(540px) rotateX(23deg) scale(1.25);opacity:.5;}
+.ye-ambient-wave{position:absolute;left:-50%;bottom:8%;width:210%;height:260px;border-radius:50%;transform:rotate(-14deg);background:repeating-radial-gradient(ellipse at 50% 150%,transparent 0 8px,#0feaa01c 9px,#10eaa02c 10px,transparent 11px 20px);mask-image:linear-gradient(to top,transparent 0%,#000 30%,transparent 92%);filter:drop-shadow(0 0 13px #03efa866);animation:yeFlow 15s ease-in-out infinite alternate;}
+.ye-ambient-wave-b{bottom:11%;opacity:.62;transform:rotate(11deg);animation:yeFlowB 19s ease-in-out infinite alternate;}
+.main .ye-ambient-wave{bottom:8%;left:-25%;width:155%;height:340px;opacity:.43;}
+.main .ye-ambient-wave-b{bottom:20%;opacity:.2;}
+.ye-ambient-stars{position:absolute;inset:0;background-image:radial-gradient(circle,#1cf3a96b 1px,transparent 1.5px);background-size:47px 39px;mask-image:linear-gradient(to top,#0003,transparent 67%);opacity:.4;animation:yeStars 26s linear infinite;}
+@keyframes yeFlow{from{transform:translate3d(-4%,12px,0) rotate(-14deg) scaleY(.86)}to{transform:translate3d(5%,-22px,0) rotate(-8deg) scaleY(1.15)}}
+@keyframes yeFlowB{from{transform:translate3d(4%,0,0) rotate(11deg)}to{transform:translate3d(-5%,-20px,0) rotate(6deg)}}
+@keyframes yeBreathe{to{opacity:.6;transform:translateY(-30px) scale(1.15)}}
+@keyframes yeStars{to{background-position:47px -78px}}
+/* Navigation: floating highlight instead of separating rules */
+.side-brand{margin-bottom:58px!important;z-index:2;}
+.side-brand .brandmark{box-shadow:0 0 19px #09f5a970,0 0 44px #00fba72a;}
+.side-brand .brandmark:before{inset:-9px;border:2px solid #31ffb78c;border-left-color:transparent;box-shadow:0 0 14px #0bffb580,0 0 30px #12ffa130;}
+.side-caption{opacity:.75;}
+#nav{position:relative;z-index:2;}
+#nav a{border:0!important;border-radius:13px!important;margin:4px 0 8px;min-height:49px;background:transparent;}
+#nav a.active{background:linear-gradient(100deg,#124b34d9,#0e3b29b8)!important;box-shadow:inset 4px 0 #20f8ac,0 0 24px #06f3a916!important;}
+#nav a:hover{background:#12583a91!important;}
+.sidebar-bottom{z-index:2;}
+.ye-safety{border:1px solid #10f7a2!important;background:linear-gradient(120deg,#04251bf0,#071a15df)!important;box-shadow:0 0 22px #05ffac4a,inset 0 0 17px #00e6991b!important;}
+/* Frameless, immersive content. Keep cards identifiable and legible. */
+.topbar{position:relative;background:#04170f75!important;border-bottom:0!important;box-shadow:none!important;backdrop-filter:blur(9px);}
+.page-content{position:relative;z-index:1;}
+.card{background:linear-gradient(145deg,#0a261bc9,#061b14db 68%,#05170fd9)!important;border:1px solid #19563b70!important;border-radius:24px!important;box-shadow:0 18px 54px #00000029,0 1px 0 #72ffbd09 inset!important;backdrop-filter:blur(9px);}
+.card:hover{border-color:#21a7738f!important;box-shadow:0 20px 58px #00000040,0 0 29px #06fba40b!important;}
+.app-footer{position:relative;z-index:1;background:transparent!important;border-top:0!important;}
+.action{border-radius:15px!important;}
+.chart{background:transparent!important;}
+/* Keep all UI accessible on narrow displays. */
+@media(max-width:800px){.sidebar{box-shadow:20px 0 55px #0009}.main .ye-ambient-wave{opacity:.22}.sidebar .ye-ambient-wave{bottom:14%;}}
+@media(prefers-reduced-motion:reduce){.ye-ambient *{animation:none!important}.side-brand .brandmark:before{animation:none!important}}
