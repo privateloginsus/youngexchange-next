@@ -1,0 +1,39 @@
+/* YoungExchange Premium | Interfaccia visiva, nessuna modifica a dati o autorizzazioni */
+:root{--green:#35e9a6;--border:#244c3b}
+body{background:#06130f;background-image:radial-gradient(ellipse 55% 40% at 100% 0%,#0c50312b,transparent),radial-gradient(ellipse 65% 45% at 55% 85%,#05633b13,transparent)}
+.sidebar{background:linear-gradient(155deg,#06130f 0%,#04110d 68%,#063420 100%);border-right:1px solid #205b42;overflow:hidden;isolation:isolate}
+.sidebar:before{content:"";position:absolute;z-index:-1;inset:auto -45% 6% -35%;height:185px;background:radial-gradient(ellipse at center,#00f5a52b,transparent 70%);pointer-events:none}
+.sidebar:after{content:"";position:absolute;z-index:-1;left:-30%;right:-20%;bottom:105px;height:95px;opacity:.5;background:repeating-radial-gradient(ellipse at 60% 100%,transparent 0 8px,#18d99a38 9px,#18d99a38 10px,transparent 11px 20px);transform:rotate(-8deg);mask-image:linear-gradient(to top,black,transparent);pointer-events:none}
+.side-brand{display:flex;align-items:center;gap:11px;margin:0 2px 56px;font-weight:850;letter-spacing:-.6px;position:relative}
+.side-brand .brandmark{position:relative;isolation:isolate;flex-shrink:0;width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(140deg,#53f7bb,#16ce8e);color:#052118;font-weight:900;box-shadow:0 0 21px #11df9840;transition:transform .5s ease}
+.side-brand .brandmark:before{content:"";position:absolute;inset:-8px;border:1.5px solid #31e6a58a;border-left-color:transparent;border-bottom-color:#31e6a533;border-radius:50%;animation:yeOrbit 9s linear infinite;z-index:-1;box-shadow:0 0 13px #18e5a448}
+.side-brand:hover .brandmark{transform:rotate(-12deg) scale(1.07)}
+@keyframes yeOrbit{to{transform:rotate(360deg)}}
+.side-caption{color:#2be5a5;letter-spacing:2.4px}
+#nav a{transition:background .22s,color .22s,transform .22s,box-shadow .22s;border:1px solid transparent}
+#nav a:hover{transform:translateX(3px);background:#123e2a;color:#dffff0;border-color:#1f704c}
+#nav a.active{background:linear-gradient(100deg,#174d36,#123626);border-color:#205b42;color:#34f2ac;box-shadow:inset 4px 0 #2ef4aa,0 0 24px #13cc8a12}
+.sidebar-bottom{position:relative;z-index:1}
+.ye-safety{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px;margin-bottom:14px;color:#e9fff4;border:1px solid #27d89a;border-radius:24px;background:linear-gradient(110deg,#063523,#0b1d17);font-size:11px;font-weight:800;text-align:center;box-shadow:0 0 18px #12ed9940,inset 0 0 12px #0bdb8830}
+.ye-safety span:first-child{color:#31f2ab;font-size:21px}
+.ghost.full{border-radius:13px;transition:border-color .2s,background .2s}.ghost.full:hover{border-color:#37d89a;background:#0b2c1e}
+.topbar{background:#071610d9;backdrop-filter:blur(16px)}
+.card{position:relative;background:linear-gradient(145deg,#0d261b,#0a1c15 65%,#081811);border:1px solid #244d3a;border-radius:20px;box-shadow:0 12px 40px #00000018,inset 0 1px #9fffd00a;transition:border-color .25s,box-shadow .25s}
+.card:hover{border-color:#316e50;box-shadow:0 16px 44px #0000002e,0 0 26px #14df8b0a}
+.action,.secondary-btn,.primary,.pill,.tag{transition:transform .2s,box-shadow .2s,border-color .2s}
+.action:hover,.secondary-btn:hover,.primary:hover{transform:translateY(-2px);box-shadow:0 8px 22px #0bdb8640}
+.metric.green{color:#34e8a7;text-shadow:0 0 24px #1be9a41a}
+.coin-icon{box-shadow:inset 0 0 14px #2ef4a319}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #32e5a420}
+.ye-chart-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+.ye-timeframes,.ye-chart-tools{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ye-chart-controls button{border:1px solid #285740;border-radius:8px;padding:7px 10px;background:#0c2118;color:#a4cbb6;font:700 11px system-ui;cursor:pointer;transition:background .2s,color .2s,transform .2s}
+.ye-chart-controls button:hover{background:#18583b;color:white;transform:translateY(-1px)}
+.ye-chart-controls button.is-on{background:#164c34;color:#37f5b1;border-color:#2dbb83}
+.ye-chart-controls [data-live]{color:#34eaa6}
+.chart{touch-action:none;cursor:crosshair;border-radius:9px}
+.card:fullscreen{padding:28px;background:#071a12;overflow:auto}.card:fullscreen .chart{height:calc(100vh - 185px)}
+.ye-candle-tip{max-width:min(90%,600px)!important;white-space:normal!important;line-height:1.5!important}
+.app-footer{background:#071711b8}.app-footer>span:last-child{margin-left:auto;text-align:right}.ye-live{color:#36e8a7}
+@media(max-width:800px){.sidebar{overflow-y:auto}.ye-chart-controls{align-items:flex-start}.ye-chart-controls button{padding:7px 8px}.chart{height:270px}}
+@media(prefers-reduced-motion:reduce){.side-brand .brandmark:before{animation:none}*{scroll-behavior:auto!important}}
