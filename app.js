@@ -50,7 +50,7 @@ function yeMarketRefreshUI(){
 setInterval(yeMarketRefreshUI,1000);
 const q=a=>quotes[a.id];const change=a=>{const item=q(a);const v=item?.yeBaseline24h>0?(item.current_price/item.yeBaseline24h-1)*100:item?.price_change_percentage_24h;return v==null?'—':`<span class="${v>=0?'positive':'negative'}">${v>=0?'+':''}${fmt(v)}%</span>`};const coin=a=>`<div class="coin"><div class="coin-icon">${a.icon}</div><div><div class="coin-name">${a.name}</div><div class="coin-sub">${a.symbol}</div></div></div>`;const price=a=>q(a)?.current_price!=null?eur(q(a).current_price):'—';const livePrice=a=>`<span data-ye-price="${a.id}">${price(a)}</span>`;const liveChange=a=>`<span data-ye-change="${a.id}">${change(a)}</span>`;const wallet=a=>wallets.find(w=>w.currency===a);const balance=a=>Number(wallet(a)?.balance||0);const total=()=>wallets.reduce((sum,w)=>sum+(w.currency==='EUR'?Number(w.balance):Number(w.balance)*(assets.find(a=>a.symbol===w.currency)?q(assets.find(a=>a.symbol===w.currency))?.current_price||0:0)),0);
 const heading=(title,sub,right='')=>`<div class="page-heading"><div><h1>${title}</h1><p>${sub}</p></div>${right}</div>`;const card=(label,value,foot='')=>`<div class="card"><div class="card-label">${label}</div><div class="metric">${value}</div><div class="small">${foot}</div></div>`;const empty=`<div class="empty">Nessun movimento da mostrare.<br>Le attività del conto appariranno qui quando disponibili.</div>`;
-function dashboard(){return heading('Bentornato'+(profile?.display_name?', '+esc(profile.display_name):'')+' 👋','La tua panoramica finanziaria, in un unico posto.','<span class="pill">◈ YoungExchange Wallet</span>')+`<div class="grid cols-4">${card('Patrimonio complessivo',eur(total()),'Valore stimato in EUR')}${card('Saldo disponibile EUR',eur(balance('EUR')),'Conto euro')}${card('Portafogli attivi',wallets.length,'Asset associati al conto')}${card('Mercati monitorati',Object.keys(quotes).length,'Quotazioni esterne in EUR')}</div><div class="grid cols-2 mt"><section class="card"><div class="section-head"><h3>Mercati in evidenza</h3><a href="#markets">Tutti i mercati ↗</a></div>${assets.slice(0,4).map(a=>`<div class="asset-row">${coin(a)}<div class="align-right"><strong>${livePrice(a)}</strong><div class="small">${liveChange(a)}</div></div></div>`).join('')}</section><section class="card"><div class="section-head"><h3>Il tuo portafoglio</h3><a href="#wallet">Apri wallet ↗</a></div><div class="card-label">Valore complessivo stimato</div><div class="metric green"><span data-ye-total>${eur(total())}</span></div><div class="small">Calcolato sui saldi Supabase e sulle quotazioni disponibili.</div><div class="actions">${actions()}</div></section></div><div class="card mt"><div class="section-head"><h3>Bitcoin · andamento recente</h3><span class="small">Dati indicativi del mercato</span></div><canvas class="chart" id="mainChart"></canvas></div>`}
+function dashboard(){return heading('Bentornato'+(profile?.display_name?', '+esc(profile.display_name):'')+' 👋','La tua panoramica finanziaria, in un unico posto.','<span class="pill">◈ YoungExchange Wallet</span>')+`<div class="grid cols-4">${card('Patrimonio complessivo',eur(total()),'Valore stimato in EUR')}${card('Saldo disponibile EUR',eur(balance('EUR')),'Conto euro')}${card('Portafogli attivi',wallets.length,'Asset associati al conto')}${card('Mercati monitorati',Object.keys(quotes).length,'Quotazioni esterne in EUR')}</div><div class="grid cols-2 mt"><section class="card"><div class="section-head"><h3>Mercati in evidenza</h3><a href="#markets">Tutti i mercati ↗</a></div>${assets.slice(0,4).map(a=>`<div class="asset-row">${coin(a)}<div class="align-right"><strong>${livePrice(a)}</strong><div class="small">${liveChange(a)}</div></div></div>`).join('')}</section><section class="card"><div class="section-head"><h3>Il tuo portafoglio</h3><a href="#wallet">Apri wallet ↗</a></div><div class="card-label">Valore complessivo stimato</div><div class="metric green"><span data-ye-total>${eur(total())}</span></div><div class="small">Calcolato sui saldi Supabase e sulle quotazioni disponibili.</div><div class="actions">${actions()}</div></section></div><div class="card mt"><div class="section-head"><h3>Bitcoin · grafico a candele</h3><span class="small">Candele 1H · volume · media mobile</span></div><canvas class="chart" id="mainChart"></canvas></div>`}
 function actions(){return [['↓','Deposita','deposit'],['↑','Preleva','withdraw'],['↔','Trasferisci','transfer'],['⇄','Converti','swap']].map(([i,n,a])=>`<button class="action" data-action="${a}"><strong>${i}</strong><span>${n}</span></button>`).join('')}
 function markets(){return heading('Mercati crypto','Quotazioni live dove disponibili; CoinGecko come fonte di riferimento e fallback. Le variazioni indicano le ultime 24 ore, non il movimento dell’ultimo minuto.','<button class="secondary-btn" id="refreshMarkets">↻ Aggiorna</button>')+`<div class="grid cols-3">${assets.slice(0,3).map(a=>card(a.name,price(a),change(a))).join('')}</div><section class="card mt"><div class="section-head"><h3>Panoramica dei mercati</h3><span class="small">Prezzi live quando disponibili · variazione 24h da CoinGecko · possibili ritardi</span></div><div class="table-wrap"><table><thead><tr><th>Asset</th><th>Prezzo EUR</th><th>24 ore</th><th>Capitalizzazione</th><th></th></tr></thead><tbody>${assets.map(a=>`<tr><td>${coin(a)}</td><td>${livePrice(a)}</td><td>${liveChange(a)}</td><td>${q(a)?.market_cap!=null?eur(q(a).market_cap):'—'}</td><td><button class="table-link" data-trade="${a.id}">Grafico ↗</button></td></tr>`).join('')}</tbody></table></div></section>`}
 function trading(){const a=assets.find(x=>x.id===selected)||assets[0];return heading('Trading','Grafici di mercato e strumenti per analizzare gli asset.','<span class="pill">Mercato spot · EUR</span>')+`<div class="trade-layout"><section class="card"><div class="section-head"><div><h3>${a.name} / EUR</h3><div class="metric green">${livePrice(a)}</div><div class="small">Variazione 24h: ${liveChange(a)}</div></div><select id="tradeAsset" style="max-width:160px">${assets.map(x=>`<option value="${x.id}" ${x.id===selected?'selected':''}>${x.symbol} / EUR</option>`).join('')}</select></div><canvas id="tradeChart" class="chart chart-tall"></canvas><div class="small">Grafico indicativo basato sui dati di mercato disponibili; non è un feed di esecuzione ordini.</div></section><div class="trade-side"><section class="card"><div class="section-head"><h3>Operazione spot</h3><span class="tag">In preparazione</span></div><div class="btn-row"><button class="secondary-btn" data-action="buy">Acquista</button><button class="secondary-btn" data-action="sell">Vendi</button></div><div class="divider"></div><label>Asset</label><input value="${a.symbol}" disabled><label>Prezzo indicativo</label><input value="${esc(price(a))}" disabled><label>Importo</label><input placeholder="Operazioni non ancora abilitate" disabled><p class="small">L'esecuzione di ordini richiede un motore di trading sicuro, controlli sui saldi e una registrazione contabile atomica.</p></section><section class="card"><div class="section-head"><h3>Profondità di mercato</h3></div><div class="empty">Order book reale non collegato.<br>Non mostriamo ordini inventati.</div></section></div></div>`}
@@ -296,9 +296,84 @@ async function phoneVerification(){
   overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
 }
 async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
-if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
+if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
 // Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
+// Candlestick OHLC REALI da Kraken; nessuna candela sintetica.
+const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'SOLEUR',ripple:'XRPEUR'};
+const yeOhlcCache=new Map();
+const yeOhlcInFlight=new Map();
+function yeCandlePrice(v){return Number(v).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:v<1?5:2})+' €'}
+async function yeGetOhlc(assetId){
+ const pair=yeOhlcPairs[assetId];if(!pair)throw Error('Mercato OHLC non disponibile per questo asset');
+ const saved=yeOhlcCache.get(assetId);if(saved&&Date.now()-saved.at<60000)return saved.data;
+ if(yeOhlcInFlight.has(assetId))return yeOhlcInFlight.get(assetId);
+ const job=(async()=>{
+  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),9000);
+  try{
+   const r=await fetch('https://api.kraken.com/0/public/OHLC?pair='+encodeURIComponent(pair)+'&interval=60',{signal:ctrl.signal,cache:'no-store'});
+   if(!r.ok)throw Error('HTTP '+r.status);
+   const json=await r.json();if(json.error?.length)throw Error(json.error.join('; '));
+   const key=Object.keys(json.result||{}).find(k=>k!=='last');if(!key)throw Error('Serie OHLC assente');
+   const rows=json.result[key].map(x=>({t:Number(x[0])*1000,o:Number(x[1]),h:Number(x[2]),l:Number(x[3]),c:Number(x[4]),v:Number(x[6])})).filter(x=>[x.t,x.o,x.h,x.l,x.c,x.v].every(Number.isFinite)&&x.o>0&&x.h>=Math.max(x.o,x.c)&&x.l<=Math.min(x.o,x.c));
+   // Ultima candela Kraken in formazione: e' valida ma non chiusa, indicata nell'interfaccia.
+   if(rows.length<10)throw Error('Dati insufficienti');
+   const data=rows.slice(-96);yeOhlcCache.set(assetId,{at:Date.now(),data});return data;
+  }finally{clearTimeout(timer)}
+ })();yeOhlcInFlight.set(assetId,job);try{return await job}finally{yeOhlcInFlight.delete(assetId)}
+}
 function draw(id,assetId){
+ const canvas=$(id);if(!canvas)return;
+ // Rimuovi solo i listener del precedente grafico.
+ if(canvas._yeChartCleanup)canvas._yeChartCleanup();
+ const existing=canvas._yeCandle;
+ if(existing&&existing.assetId===assetId){existing.paint();return}
+ if(canvas._yePendingAsset===assetId)return;canvas._yePendingAsset=assetId;
+ canvas._yeCandle=null;
+ const ctx=canvas.getContext('2d');if(!ctx)return;
+ const w=canvas.clientWidth||700,h=canvas.clientHeight||300;
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#8fb5a3';ctx.font='13px sans-serif';ctx.fillText('Caricamento candele di mercato…',18,30);
+ yeGetOhlc(assetId).then(rows=>{canvas._yePendingAsset=null;
+  if(!canvas.isConnected||!session)return;
+  const currentKey=location.hash.slice(1).split('?')[0]||'dashboard';
+  if((id==='mainChart'&&currentKey!=='dashboard')||(id==='tradeChart'&&currentKey!=='trading')||(id==='tradeChart'&&selected!==assetId))return;
+  const parent=canvas.parentElement;parent.style.position='relative';
+  let tooltip=parent.querySelector('.ye-candle-tip');
+  if(!tooltip){tooltip=document.createElement('div');tooltip.className='ye-candle-tip';tooltip.hidden=true;parent.appendChild(tooltip)}
+  let hover=-1;
+  const paint=()=>{
+   if(!canvas.isConnected)return;
+   const dpr=Math.min(devicePixelRatio||1,2),W=canvas.clientWidth,H=canvas.clientHeight;
+   if(W<90||H<100)return;
+   canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+   const c=canvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+   const L=15,R=86,T=30,B=28,volH=Math.max(42,H*.19),gap=17,priceBottom=H-B-volH-gap;
+   const plotW=W-L-R,priceH=priceBottom-T;
+   const low=Math.min(...rows.map(x=>x.l)),high=Math.max(...rows.map(x=>x.h)),pad=(high-low||high*.001)*.08;
+   const lo=low-pad,hi=high+pad,py=v=>T+(hi-v)/(hi-lo)*priceH;
+   const candleW=plotW/rows.length,bodyW=Math.max(1.5,Math.min(10,candleW*.68));
+   c.font='11px system-ui, sans-serif';c.textBaseline='middle';
+   for(let k=0;k<5;k++){const val=lo+(hi-lo)*(4-k)/4,y=py(val);c.strokeStyle='rgba(120,160,143,.21)';c.lineWidth=1;c.setLineDash([2,5]);c.beginPath();c.moveTo(L,y);c.lineTo(W-R+6,y);c.stroke();c.setLineDash([]);c.fillStyle='#92ae9e';c.textAlign='right';c.fillText(yeCandlePrice(val),W-5,y)}
+   for(let k=0;k<=4;k++){const x=L+plotW*k/4;c.strokeStyle='rgba(120,160,143,.11)';c.beginPath();c.moveTo(x,T);c.lineTo(x,H-B);c.stroke();const dt=rows[Math.min(rows.length-1,Math.round((rows.length-1)*k/4))].t;c.fillStyle='#91aa9e';c.textAlign='center';c.textBaseline='bottom';c.fillText(new Date(dt).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),x,H-4);c.textBaseline='middle'}
+   const maxVol=Math.max(...rows.map(x=>x.v),1);const volTop=priceBottom+gap;
+   rows.forEach((r,i)=>{const x=L+(i+.5)*candleW,up=r.c>=r.o,color=up?'#36e9a2':'#ff7185';
+    c.fillStyle=up?'rgba(54,233,162,.36)':'rgba(255,113,133,.36)';const vh=Math.max(1,r.v/maxVol*volH);c.fillRect(x-bodyW/2,H-B-vh,bodyW,vh);
+    c.strokeStyle=color;c.lineWidth=1.15;c.beginPath();c.moveTo(x,py(r.h));c.lineTo(x,py(r.l));c.stroke();
+    const y1=py(Math.max(r.o,r.c)),y2=py(Math.min(r.o,r.c));c.fillStyle=color;c.fillRect(x-bodyW/2,y1,bodyW,Math.max(1,y2-y1));
+   });
+   // Media mobile semplice a 20 candele, calcolata solo sulle chiusure reali.
+   c.beginPath();let started=false;rows.forEach((r,i)=>{if(i<19)return;let sum=0;for(let j=i-19;j<=i;j++)sum+=rows[j].c;const x=L+(i+.5)*candleW,y=py(sum/20);if(!started){c.moveTo(x,y);started=true}else c.lineTo(x,y)});c.strokeStyle='#f2c65e';c.lineWidth=1.7;c.stroke();
+   c.fillStyle='#36e9a2';c.fillRect(L,T-20,9,3);c.fillStyle='#a6bfb1';c.textAlign='left';c.fillText('Candele 1H',L+14,T-18);c.fillStyle='#f2c65e';c.fillRect(L+115,T-20,12,3);c.fillStyle='#a6bfb1';c.fillText('Media mobile 20',L+132,T-18);
+   const live=Number(quotes[assetId]?.current_price);if(Number.isFinite(live)&&live>=lo&&live<=hi){const y=py(live);c.strokeStyle='rgba(79,238,169,.55)';c.setLineDash([5,4]);c.beginPath();c.moveTo(L,y);c.lineTo(W-R+5,y);c.stroke();c.setLineDash([])}
+   if(hover>=0&&hover<rows.length){const x=L+(hover+.5)*candleW;c.strokeStyle='rgba(220,250,231,.65)';c.setLineDash([3,4]);c.beginPath();c.moveTo(x,T);c.lineTo(x,H-B);c.stroke();c.setLineDash([])}
+  };
+  const move=e=>{const rect=canvas.getBoundingClientRect();hover=Math.max(0,Math.min(rows.length-1,Math.floor((e.clientX-rect.left-15)/(rect.width-101)*rows.length)));const r=rows[hover];if(!r)return;tooltip.hidden=false;tooltip.textContent=new Date(r.t).toLocaleString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'  ·  O '+yeCandlePrice(r.o)+'  H '+yeCandlePrice(r.h)+'  L '+yeCandlePrice(r.l)+'  C '+yeCandlePrice(r.c)+'  ·  Vol '+r.v.toLocaleString('it-IT',{maximumFractionDigits:3});tooltip.style.left=Math.max(6,Math.min(rect.width-310,e.clientX-rect.left+10))+'px';tooltip.style.top='34px';paint()};
+  const leave=()=>{hover=-1;tooltip.hidden=true;paint()};
+  canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerleave',leave);window.addEventListener('resize',paint);
+  canvas._yeChartCleanup=()=>{canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerleave',leave);window.removeEventListener('resize',paint)};
+  canvas._yeCandle={assetId,paint};paint();
+ }).catch(err=>{canvas._yePendingAsset=null;console.warn('Candele OHLC non disponibili:',err.message);if(canvas.isConnected){canvas._yeCandle={assetId,paint:()=>{}};drawSparkFallback(id,assetId)}});
+}
+function drawSparkFallback(id,assetId){
  const canvas=$(id);if(!canvas)return;
  const item=quotes[assetId],raw=item?.sparkline_in_7d?.price;
  const values=Array.isArray(raw)?raw.map(Number).filter(Number.isFinite):[];
