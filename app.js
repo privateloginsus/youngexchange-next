@@ -43,6 +43,9 @@ function yeMarketRefreshUI(){
  root.querySelectorAll('[data-ye-change]').forEach(el=>{const a=assets.find(x=>x.id===el.dataset.yeChange);if(a)el.innerHTML=change(a)});
  root.querySelectorAll('[data-ye-total]').forEach(el=>el.textContent=eur(total()));
  root.querySelectorAll('[data-ye-wallet-value]').forEach(el=>{const a=assets.find(x=>x.symbol===el.dataset.yeWalletValue);if(a&&q(a))el.textContent=eur(balance(a.symbol)*q(a).current_price)});
+ // Ridisegna gli indicatori live del grafico senza rigenerare l'intera pagina.
+ if(key==='dashboard'&&$('mainChart'))draw('mainChart','bitcoin');
+ if(key==='trading'&&$('tradeChart'))draw('tradeChart',selected);
 }
 setInterval(yeMarketRefreshUI,1000);
 const q=a=>quotes[a.id];const change=a=>{const item=q(a);const v=item?.yeBaseline24h>0?(item.current_price/item.yeBaseline24h-1)*100:item?.price_change_percentage_24h;return v==null?'—':`<span class="${v>=0?'positive':'negative'}">${v>=0?'+':''}${fmt(v)}%</span>`};const coin=a=>`<div class="coin"><div class="coin-icon">${a.icon}</div><div><div class="coin-name">${a.name}</div><div class="coin-sub">${a.symbol}</div></div></div>`;const price=a=>q(a)?.current_price!=null?eur(q(a).current_price):'—';const livePrice=a=>`<span data-ye-price="${a.id}">${price(a)}</span>`;const liveChange=a=>`<span data-ye-change="${a.id}">${change(a)}</span>`;const wallet=a=>wallets.find(w=>w.currency===a);const balance=a=>Number(wallet(a)?.balance||0);const total=()=>wallets.reduce((sum,w)=>sum+(w.currency==='EUR'?Number(w.balance):Number(w.balance)*(assets.find(a=>a.symbol===w.currency)?q(assets.find(a=>a.symbol===w.currency))?.current_price||0:0)),0);
@@ -293,6 +296,58 @@ async function phoneVerification(){
   overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
 }
 async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
-function draw(id,assetId){const canvas=$(id);if(!canvas)return;const item=quotes[assetId];const raw=item?.sparkline_in_7d?.price;if(!raw?.length){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#8da79b';ctx.font='13px DM Sans';ctx.fillText('Grafico non disponibile: attendi i dati di mercato.',20,40);return}const render=()=>{const dpr=window.devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);const vals=raw.filter(x=>Number.isFinite(x));if(vals.length<2)return;const lo=Math.min(...vals),hi=Math.max(...vals),range=hi-lo||1,pad=15;ctx.strokeStyle='#254537';ctx.lineWidth=1;for(let i=0;i<5;i++){let y=pad+i*(h-pad*2)/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}const points=vals.map((v,i)=>[i/(vals.length-1)*w,pad+(hi-v)/range*(h-pad*2)]);const gradient=ctx.createLinearGradient(0,0,0,h);gradient.addColorStop(0,'#36e6a14a');gradient.addColorStop(1,'#36e6a100');ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();ctx.fillStyle=gradient;ctx.fill();ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle='#38e5a3';ctx.lineWidth=2.4;ctx.stroke()};requestAnimationFrame(render)}
+if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
+// Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
+function draw(id,assetId){
+ const canvas=$(id);if(!canvas)return;
+ const item=quotes[assetId],raw=item?.sparkline_in_7d?.price;
+ const values=Array.isArray(raw)?raw.map(Number).filter(Number.isFinite):[];
+ const old=canvas._yeChartCleanup;if(old)old();
+ const host=canvas.parentElement;
+ let tip=host.querySelector('.ye-chart-tooltip');
+ if(!tip){host.style.position='relative';tip=document.createElement('div');tip.className='ye-chart-tooltip';tip.hidden=true;host.appendChild(tip)}
+ const priceFormat=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:n<1?5:2});
+ if(values.length<2){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#9ab3a5';ctx.font='13px sans-serif';ctx.fillText('Storico non disponibile: attendi i dati di mercato.',18,40);return}
+ let hover=-1;
+ const render=()=>{
+  if(!canvas.isConnected)return;
+  const dpr=Math.min(window.devicePixelRatio||1,3),w=canvas.clientWidth,h=canvas.clientHeight;
+  if(w<50||h<80)return;
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  const left=14,right=84,top=23,bottom=32,pw=Math.max(10,w-left-right),ph=h-top-bottom;
+  const current=Number(quotes[assetId]?.current_price);
+  // L'ultimo tick live e' distinto dai punti storici; non inventare candele o intervalli.
+  const live=Number.isFinite(current)&&current>0?current:values.at(-1);
+  const min=Math.min(...values,live),max=Math.max(...values,live),margin=(max-min||max*.005||1)*.14;
+  const lo=min-margin,hi=max+margin,scale=hi-lo||1;
+  const xy=(v,i)=>[left+(i/(values.length-1))*pw,top+(hi-v)/scale*ph];
+  const points=values.map(xy);const y=v=>top+(hi-v)/scale*ph;
+  ctx.font='11px DM Sans, sans-serif';ctx.textBaseline='middle';
+  for(let i=0;i<5;i++){
+   const value=lo+(hi-lo)*(4-i)/4,yy=y(value);
+   ctx.strokeStyle='rgba(113,160,137,.16)';ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right+9,yy);ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle='#8eab9a';ctx.textAlign='right';ctx.fillText(priceFormat(value),w-5,yy);
+  }
+  const start=Date.now()-7*86400000;
+  ctx.textAlign='center';ctx.fillStyle='#8eab9a';ctx.textBaseline='bottom';
+  for(let i=0;i<=4;i++){const x=left+pw*i/4;const dt=new Date(start+7*86400000*i/4);ctx.fillText(dt.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}),x,h-4)}
+  const up=values.at(-1)>=values[0],stroke=up?'#38e5a3':'#f37d87';
+  const fill=ctx.createLinearGradient(0,top,0,h-bottom);fill.addColorStop(0,up?'rgba(56,229,163,.25)':'rgba(243,125,135,.20)');fill.addColorStop(1,'rgba(56,229,163,0)');
+  ctx.beginPath();points.forEach(([x,yy],i)=>i?ctx.lineTo(x,yy):ctx.moveTo(x,yy));ctx.lineTo(points.at(-1)[0],h-bottom);ctx.lineTo(left,h-bottom);ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+  ctx.beginPath();points.forEach(([x,yy],i)=>i?ctx.lineTo(x,yy):ctx.moveTo(x,yy));ctx.lineWidth=2.6;ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle=stroke;ctx.shadowColor=stroke;ctx.shadowBlur=9;ctx.stroke();ctx.shadowBlur=0;
+  // Prezzo live corrente: indicatore tratteggiato, non parte della serie storica.
+  const ly=y(live);ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(56,229,163,.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,ly);ctx.lineTo(w-right+9,ly);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#38e5a3';ctx.beginPath();ctx.arc(w-right+9,ly,4,0,Math.PI*2);ctx.fill();
+  if(hover>=0){const i=Math.min(values.length-1,hover),[x,yy]=points[i];ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(232,255,242,.45)';ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,h-bottom);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=stroke;ctx.beginPath();ctx.arc(x,yy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0c2118';ctx.lineWidth=2;ctx.stroke()}
+ };
+ const move=e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left;hover=Math.max(0,Math.min(values.length-1,Math.round((x-14)/Math.max(1,r.width-98)*(values.length-1))));const date=new Date(Date.now()-7*86400000+hover/(values.length-1)*7*86400000);tip.textContent=date.toLocaleString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+priceFormat(values[hover]);tip.hidden=false;tip.style.left=Math.max(10,Math.min(r.width-170,x+12))+'px';tip.style.top='44px';render()};
+ const leave=()=>{hover=-1;tip.hidden=true;render()};
+ canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerleave',leave);
+ window.addEventListener('resize',render);
+ canvas._yeChartCleanup=()=>{canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerleave',leave);window.removeEventListener('resize',render)};
+ requestAnimationFrame(render);
+}
+
 async function init(){if(!sb){$('authNote').textContent='Per attivare l’accesso inserisci la Publishable Key nel file config.js.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){$('authScreen').hidden=false;$('appScreen').hidden=true;authMode('recovery')}else if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT'){if(mode!=='recovery')exit()}else if(event==='PASSWORD_RECOVERY'){session=null;$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('recovery');toast('Inserisci una nuova password per completare il recupero.');}else if(event==='SIGNED_IN'&&newSession&&!session&&mode!=='recovery')setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
 })();
