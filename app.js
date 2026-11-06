@@ -60,27 +60,24 @@ function support(){return heading('Assistenza YoungExchange','Il tuo centro assi
 function yeOpenSupport(topic=''){const id=cfg.crispWebsiteId;if(!id){toast('Chat non configurata: verifica il Website ID del servizio di assistenza.');return;}if(!window.$crisp){window.$crisp=[];window.CRISP_WEBSITE_ID=id;const script=document.createElement('script');script.src='https://client.crisp.chat/l.js';script.async=true;script.onerror=()=>toast('Servizio chat non raggiungibile. Riprova più tardi.');document.head.appendChild(script);}if(topic)window.$crisp.push(['set','session:data',[["argomento",topic]]]);window.$crisp.push(['do','chat:open']);}
 
 function adminPage(){
-  const sections=[
-    ['users','Utenti e conti'],
-    ['deposits','Depositi'],
-    ['withdrawals','Prelievi'],
-    ['transactions','Transazioni'],
-    ['balances','Saldi'],
-    ['crypto','Crypto e cambi'],
-    ['history','Storico e controlli'],
-    ['settings','Impostazioni sito']
-  ];
-  return heading('Amministrazione','Centro di controllo YoungExchange')+
-    '<div class="card"><h3>YoungExchange Admin</h3>'+
-    '<p class="small">Seleziona una sezione amministrativa</p>'+
-    '<div class="grid cols-2">'+
-    sections.map(([id,label])=>
-      '<button type="button" class="secondary-btn" data-admin-section="'+id+'">'+esc(label)+'</button>'
-    ).join('')+
-    '</div></div>'+
-    '<div id="adminWorkspace" class="mt">Caricamento dati amministrativi…</div>';
+ const sections=[['users','Utenti e conti','Gestione utenti, anagrafiche e wallet','users'],['deposits','Depositi','Richieste, verifiche e accrediti interni','download'],['withdrawals','Prelievi','Richieste e autorizzazioni','upload'],['transactions','Transazioni','Movimenti e trasferimenti interni','arrow-left-right'],['balances','Saldi','Controllo dei wallet e rettifiche','wallet'],['crypto','Crypto e cambi','Quotazioni e richieste di conversione','refresh-cw'],['history','Storico e controlli','Tracciamento e verifiche','history'],['settings','Impostazioni sito','Configurazione e sicurezza','settings']];
+ return heading('Amministrazione','Centro di controllo · YoungExchange Platinum')+
+ '<div class="ye-plat-admin-head"><div><span class="ye-plat-kicker">YOUNGEXCHANGE / PLATINUM CONTROL CENTER</span><h2>Workspace amministrativo</h2><p>Conti, richieste e controlli in un unico ambiente protetto.</p></div><span class="ye-plat-admin-chip">◆ PLATINUM</span></div>'+
+ '<div class="ye-plat-admin-grid">'+sections.map(([id,label,description])=>'<button type="button" class="ye-plat-admin-tile '+(activeAdminSection===id?'active':'')+'" data-admin-section="'+id+'"><span class="ye-plat-admin-tile-icon">'+({users:'♙',deposits:'↓',withdrawals:'↑',transactions:'↔',balances:'◈',crypto:'⇄',history:'▤',settings:'⚙'}[id])+'</span><span><strong>'+esc(label)+'</strong><small>'+esc(description)+'</small></span><span class="ye-plat-admin-chevron">↗</span></button>').join('')+'</div>'+
+ '<div id="adminWorkspace" class="ye-plat-workspace mt"><section class="card"><h3>Caricamento dati amministrativi…</h3></section></div>';
 }
-  
+// PLATINUM: helper amministrativi centralizzati. Ogni RPC applica le autorizzazioni nel database.
+const adminDate=value=>{if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?'—':date.toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})};
+const adminOperationLabels={deposit:'Deposito',withdrawal:'Prelievo',transfer:'Trasferimento',swap:'Conversione',buy:'Acquisto',sell:'Vendita',internal_deposit:'Accredito interno',manual_credit:'Rettifica positiva',manual_debit:'Rettifica negativa'};
+const adminStatusLabels={pending:'In attesa',approved:'Approvata',rejected:'Rifiutata',completed:'Completata',posted:'Contabilizzata',failed:'Non riuscita',cancelled:'Annullata'};
+const adminErr=error=>{console.error('[YoungExchange Platinum] Errore amministrazione:',error);toast('Amministrazione: '+(error?.message||String(error)))};
+async function adminRpc(name,args={}){
+ if(!sb||!session||!isAdmin)throw Error('Sessione amministratore non autorizzata.');
+ const {data,error}=await sb.rpc(name,args);
+ if(error)throw Error(name+': '+error.message);
+ if(data==null)return [];
+ return Array.isArray(data)?data:[data];
+}
 const adminSections=['users','deposits','withdrawals','transactions','balances','crypto','history','settings'];
 let activeAdminSection='users';
 function adminTable(rows,columns){return '<div class="table-wrap"><table><thead><tr>'+columns.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr>'+columns.map(c=>'<td>'+c[1](r)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+columns.length+'">Nessun dato disponibile.</td></tr>')+'</tbody></table></div>'}
@@ -145,13 +142,13 @@ async function yeAttachQueue(section){
 setInterval(()=>{if(isAdmin&&session&&$('yeClientQueue')?.isConnected)yeRefreshQueue(activeAdminSection)},15000);
 async function adminSelectSection(section){
  const workspace=$('adminWorkspace');if(!workspace||!isAdmin||!adminSections.includes(section))return;
- activeAdminSection=section;workspace.innerHTML='<section class="card"><h3>Caricamento '+esc(section)+'…</h3></section>';
+ activeAdminSection=section;document.querySelectorAll('[data-admin-section]').forEach(b=>b.classList.toggle('active',b.dataset.adminSection===section));workspace.innerHTML='<section class="card"><h3>Caricamento '+esc(section)+'…</h3></section>';
  const view=(title,body)=>{if(activeAdminSection===section&&workspace.isConnected)workspace.innerHTML='<section class="card"><h3>'+esc(title)+'</h3>'+body+'</section>'};
  try{
  if(section==='users'){
   const users=await adminRpc('admin_list_users');
-  view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Crea un account cliente NON verificato, senza invito. Il cliente richiede personalmente il codice email OTP dalla pagina Accesso OTP. Il telefono resta non verificato.</p><form id="adminInviteForm"><label>Nome e cognome</label><input name="name" maxlength="120" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account non verificato</button></form></div><div class="divider"></div>`+'<p class="small">Utenti registrati: '+users.length+'</p>'+adminTable(users,[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'<label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
-  const inviteForm=workspace.querySelector('#adminInviteForm');if(inviteForm)inviteForm.onsubmit=adminInviteUser;
+  view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Crea un account cliente NON verificato, senza invito. Il cliente richiede personalmente il codice email OTP dalla pagina Accesso OTP. Il telefono resta non verificato.</p><form id="adminInviteForm"><label>Nome e cognome</label><input name="name" maxlength="120" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account non verificato</button></form></div><div class="divider"></div>`+'<p class="small">Utenti registrati: '+users.length+'</p>'+adminTools(users,'utenti')+'<div data-admin-results="utenti">'+adminTable(users,[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'</div><label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
+  adminBindTools(workspace,users,'utenti',[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]]);const inviteForm=workspace.querySelector('#adminInviteForm');if(inviteForm)inviteForm.onsubmit=adminInviteUser;
   const sel=workspace.querySelector('#adminUser');if(sel){sel.onchange=e=>{adminSelectedUser=e.target.value||null;loadAdminUser()};if(adminSelectedUser)loadAdminUser()}
   return;
  }
@@ -204,9 +201,9 @@ async function adminSelectSection(section){
  if(section==='history'){
   view('Storico e controlli','<p class="small">Cronologia delle richieste. Non sostituisce un registro di audit immutabile o le prove di pagamento.</p>'+adminTools(enriched,'storico')+'<div data-admin-results="storico">'+adminTable(enriched,adminOperationColumns)+'</div>');adminBindTools(workspace,enriched,'storico',adminOperationColumns);return;
  }
- }catch(e){adminErr(e);view('Errore caricamento','<p class="small">'+esc(e.message||String(e))+'</p>')}
+ }catch(e){adminErr(e);view('Errore caricamento','<p class="small">'+esc(e.message||String(e))+'</p><button type="button" class="secondary-btn" data-admin-retry="'+esc(section)+'">Riprova</button>')}
 }
-document.addEventListener('click',event=>{const button=event.target.closest('[data-admin-section]');if(button)adminSelectSection(button.dataset.adminSection)});
+document.addEventListener('click',event=>{const button=event.target.closest('[data-admin-section]');if(button)adminSelectSection(button.dataset.adminSection);const retry=event.target.closest('[data-admin-retry]');if(retry)adminSelectSection(retry.dataset.adminRetry)});
 async function loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const workspace=$('adminWorkspace');if(workspace)await adminSelectSection(activeAdminSection)}
 async function loadAdminUser(){const target=$('adminUserDetail');if(!target)return;const id=adminSelectedUser;if(!id){target.textContent='Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.';return}target.textContent='Caricamento…';try{const [walletList,ops]=await Promise.all([adminRpc('admin_list_wallets',{p_user_id:id}),adminRpc('admin_list_operations',{p_user_id:id})]);if(adminSelectedUser!==id||!target.isConnected)return;target.innerHTML=`<h3>Wallet</h3><div class="table-wrap"><table><thead><tr><th>Valuta</th><th>Saldo</th><th>Impegnato</th><th>Disponibile</th></tr></thead><tbody>${walletList.map(w=>`<tr><td>${esc(w.currency)}</td><td>${fmt(w.total_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.reserved_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.available_balance,w.currency==='EUR'?2:8)}</td></tr>`).join('')||'<tr><td colspan="4">Nessun wallet.</td></tr>'}</tbody></table></div><h3 class="mt">Ultime operazioni (${ops.length})</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Destinazione</th></tr></thead><tbody>${ops.slice(0,30).map(r=>`<tr><td>${esc(adminDate(r.operation_date||r.created_at))}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td>${esc(adminStatusLabels[r.status]||r.status)}</td><td>${esc(r.destination_address||r.destination_iban||'—')}</td></tr>`).join('')||'<tr><td colspan="5">Nessuna operazione.</td></tr>'}</tbody></table></div>`}catch(e){adminErr(e);target.textContent='Errore nel caricamento dei dettagli.'}}
 async function adminPostEntry(event){
@@ -295,7 +292,7 @@ async function passwordReset(){if(!sb||!session?.user.email)return;const {error}
 if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
 // Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
 // Candlestick OHLC REALI da Kraken; nessuna candela sintetica.
-const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'SOLEUR',ripple:'XRPEUR'};
+const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'SOLEUR',ripple:'XRPEUR',binancecoin:'BNBEUR'};
 const yeOhlcCache=new Map();
 const yeOhlcInFlight=new Map();
 function yeCandlePrice(v){return Number(v).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:v<1?5:2})+' €'}
@@ -361,7 +358,7 @@ function draw(id,assetId){
   if(state.cross&&state.hover>=start&&state.hover<end){const i=state.hover-start,x=L+(i+.5)*cw,r=all[state.hover];c.strokeStyle='#d7f9e6a0';c.setLineDash([3,4]);c.beginPath();c.moveTo(x,T);c.lineTo(x,H-B);c.stroke();c.setLineDash([]);tip.hidden=false;tip.textContent=new Date(r.t).toLocaleString('it-IT')+' · O '+yeCandlePrice(r.o)+' · H '+yeCandlePrice(r.h)+' · L '+yeCandlePrice(r.l)+' · C '+yeCandlePrice(r.c)+' · Vol '+r.v.toLocaleString('it-IT',{maximumFractionDigits:3})}else tip.hidden=true;
   const summary=$(id==='mainChart'?'yeChartSummaryMain':'yeChartSummaryMarket');if(summary&&rows.length){const last=rows.at(-1),first=rows[0],delta=(last.c/first.o-1)*100;const fields=[['Apertura',yeCandlePrice(last.o)],['Massimo',yeCandlePrice(last.h)],['Minimo',yeCandlePrice(last.l)],['Chiusura',yeCandlePrice(last.c)],['Variazione intervallo',(delta>=0?'+':'')+delta.toFixed(2)+'%'],['Volume',last.v.toLocaleString('it-IT',{maximumFractionDigits:3})]];summary.innerHTML=fields.map(([k,v])=>'<div><span>'+k+'</span><strong>'+v+'</strong></div>').join('');}const mainPrice=$('yeChartPriceMain');if(mainPrice&&id==='mainChart'){const q=Number(quotes.bitcoin?.current_price);if(Number.isFinite(q)&&q>0)mainPrice.textContent=yeCandlePrice(q)}const info=host.querySelector('.ye-chart-info');if(info)info.textContent=state.end&&state.end<all.length?'Storico · trascina per navigare':'Ultime candele · trascina per esplorare';
  };
- const load=async()=>{state.rows=[];render();try{const data=await yeLoadChartRows(assetId,state.interval);if(yeChartState.get(id)!==state)return;state.rows=data;state.end=data.length;state.visible=Math.min(state.visible,data.length);render()}catch(err){if(yeChartState.get(id)!==state)return;const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f4b7a9';c.font='13px sans-serif';c.fillText('Candele non disponibili: '+err.message,15,35)}};
+ const load=async()=>{state.rows=[];render();try{const data=await yeLoadChartRows(assetId,state.interval);if(yeChartState.get(id)!==state)return;state.rows=data;state.end=data.length;state.visible=Math.min(state.visible,data.length);render()}catch(err){if(yeChartState.get(id)!==state)return;const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f4b7a9';c.font='13px sans-serif';c.fillText(('Dati OHLC non disponibili: '+err.message).slice(0,95),15,35)}};
  const locate=e=>{const rect=canvas.getBoundingClientRect(),n=Math.min(state.visible,state.rows.length),end=Math.max(n,Math.min(state.rows.length,state.end||state.rows.length));return Math.max(end-n,Math.min(end-1,end-n+Math.floor((e.clientX-rect.left-L)/Math.max(1,rect.width-L-R)*n)))};
  const down=e=>{if(!state.rows.length)return;state.drag={x:e.clientX,end:state.end};canvas.style.cursor='grabbing';canvas.setPointerCapture?.(e.pointerId)};
  let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;render()})};
