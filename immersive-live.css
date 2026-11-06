@@ -1,0 +1,28 @@
+/* Premium Pro Live Immersive Edition: unified continuous visual environment */
+:root{--green:#2df4b2;--border:#127c58}
+.app{background:radial-gradient(ellipse at 56% 13%,#064b34 0%,transparent 43%),radial-gradient(ellipse at 12% 88%,#075038 0%,transparent 42%),#02120e!important}
+.app>.ye-ambient{background:radial-gradient(ellipse at 74% 7%,#09e49b10,transparent 54%),radial-gradient(ellipse at 3% 80%,#07e89a0b,transparent 55%)!important}
+.app>.ye-ambient .ye-ambient-wave{opacity:.09!important;animation:none!important}
+.ye-immersive-canvas{position:fixed;inset:0;z-index:-1;pointer-events:none;display:block;opacity:.95}
+.sidebar,.main{background:transparent!important;border:0!important;box-shadow:none!important}
+.sidebar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.sidebar:before,.sidebar:after{display:none!important}
+.topbar{background:linear-gradient(90deg,#031c14a0,#02181072)!important;border-bottom:1px solid #1ce4a016!important;backdrop-filter:blur(12px)!important}
+.card{background:linear-gradient(145deg,#062a20d9,#021b15c9 64%,#053125c5)!important;border:1px solid #14c98b75!important;border-radius:18px!important;box-shadow:0 16px 40px #0005,inset 0 1px 0 #67ffc020!important;backdrop-filter:blur(13px)!important}
+.card:hover{border-color:#27ffc0a0!important;box-shadow:0 18px 46px #0006,0 0 28px #00ec9a16!important}
+#nav a{border-radius:13px!important;transition:background .24s,border-color .24s,box-shadow .24s,transform .24s!important}
+#nav a:hover{background:#0c4934aa!important;transform:translateX(3px)}
+#nav a.active{background:linear-gradient(95deg,#075f44cc,#053b2baa)!important;box-shadow:inset 3px 0 #26ffc0,0 0 22px #00ec9b17!important}
+.brandmark{box-shadow:0 0 0 4px #00f4a617,0 0 21px #03fba979,0 0 45px #05d8912e!important}
+.side-brand .brandmark{animation:yeLogoBreath 4.8s ease-in-out infinite}
+@keyframes yeLogoBreath{50%{filter:brightness(1.2);box-shadow:0 0 0 6px #00f4a619,0 0 30px #03fba99a,0 0 55px #05d89140}}
+.page-heading h1,.topbar h2,.section-head h3,.metric,.side-brand{font-family:'Manrope',sans-serif!important;letter-spacing:-.035em!important}
+.page-heading h1{font-weight:800!important}
+.app-footer{border-top:1px solid #12ad791a!important}
+.chart{cursor:crosshair;image-rendering:auto}
+@media(max-width:800px){.sidebar{background:#031b14ef!important;backdrop-filter:blur(16px)!important}.ye-immersive-canvas{opacity:.68}}
+@media(prefers-reduced-motion:reduce){.side-brand .brandmark{animation:none!important}#nav a,.card{transition:none!important}}
+/* Keep the decorative canvas above the application background but below every control. */
+.ye-immersive-canvas{z-index:0!important}
+.app>.ye-ambient{z-index:0!important}
+.app>.sidebar,.app>.main{position:relative;z-index:1}
