@@ -1,0 +1,23 @@
+/* YoungExchange Premium Pro Live V2 — unified responsive ambient canvas */
+:root{--green:#20f4b1;--border:#13744e}
+html,body{background:#02140e!important}
+.app{position:relative!important;isolation:isolate!important;background:#02140e!important;--pointer-x:50%;--pointer-y:45%}
+.app>.ye-ambient{display:none!important}
+#yeProLiveCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;opacity:.94}
+.app>.sidebar,.app>.main{position:relative;z-index:1;background:transparent!important;background-image:none!important;box-shadow:none!important;isolation:auto!important}
+.app>.sidebar{position:sticky;top:0;height:100vh;border-right:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.app>.main{background:transparent!important}
+.app .topbar{background:transparent!important;border:0!important;backdrop-filter:none!important;box-shadow:none!important}
+.app .page-content{position:relative;z-index:1}
+.app .card{background:linear-gradient(140deg,rgba(2,35,24,.79),rgba(2,23,17,.82) 70%,rgba(2,31,22,.76))!important;border:1px solid rgba(17,203,130,.53)!important;box-shadow:inset 0 1px 0 rgba(117,255,202,.16),0 12px 45px #0005,0 0 30px rgba(0,255,157,.035)!important;backdrop-filter:blur(9px)!important;-webkit-backdrop-filter:blur(9px)!important;transition:box-shadow .24s,border-color .24s,transform .24s!important}
+.app .card:hover{border-color:rgba(24,244,161,.85)!important;box-shadow:inset 0 1px 0 #76ffc83d,0 16px 48px #0006,0 0 30px #03ff9c21!important}
+.app .grid.cols-4>.card{background:linear-gradient(140deg,rgba(2,43,29,.83),rgba(1,24,17,.84))!important}
+.app #nav a{border:1px solid transparent!important;box-shadow:none!important}
+.app #nav a.active{background:linear-gradient(95deg,#07563abf,#063322ad)!important;border-color:#11b67d8a!important;box-shadow:inset 4px 0 #18ffc0,0 0 22px #00ff991e!important}
+.app .ye-safety{box-shadow:0 0 24px #00ff9945,inset 0 0 18px #00ff9920!important}
+.app .app-footer{background:transparent!important;border:0!important}
+.app .side-brand .brandmark{box-shadow:0 0 25px #0affab8c,0 0 48px #00ffa72c!important}
+.app .page-heading h1,.app .section-head h3,.app .topbar h2{font-family:'Manrope',sans-serif!important;letter-spacing:-.035em!important}
+.app .chart{touch-action:none;will-change:auto}
+@media(max-width:800px){.app>.sidebar{position:fixed;z-index:30;background:#02190fe8!important;backdrop-filter:blur(18px)!important}.app>.main{z-index:1}.app #yeProLiveCanvas{opacity:.72}}
+@media(prefers-reduced-motion:reduce){.app .card{transition:none!important}}
