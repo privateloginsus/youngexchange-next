@@ -4,7 +4,7 @@
   window.YEX_ENV = 'public';
   window.YEX_CONFIG = undefined;
   if (!window.YEX_PRODUCTION_CONFIG) {
-    document.write('<script src="config.production.js?v=20261117-public-production-2"><\/script>');
+    document.write('<script src="config.production.js?v=20261117-public-production-3"><\/script>');
   }
   const config = window.YEX_PRODUCTION_CONFIG;
   const valid = config?.enabled === true &&
@@ -16,7 +16,7 @@
   window.YEX_CONFIG = valid ? config : undefined;
   window.YEX_PUBLIC_STARTUP_BLOCKED = !valid;
   if (valid) return;
-  document.querySelectorAll('#authScreen, #appScreen, main').forEach(element => {
+  document.querySelectorAll('#authScreen, #appScreen').forEach(element => {
     element.hidden = true;
   });
   const error = document.createElement('section');
