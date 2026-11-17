@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const config=window.YEX_CONFIG;const sb=window.supabase&&config?window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}}):null;const recoveryRedirectUrl=()=>window.YEX_ENV==='test'?new URL('reset-password.html',location.href).toString():'https://youngexchange.eu/reset-password.html';
+const config=window.YEX_CONFIG;const sb=window.supabase&&config?window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}}):null;const recoveryRedirectUrl=()=>'https://youngexchange.eu/reimposta-password.html';
 const $=id=>document.getElementById(id);const form=$('recoveryForm');const message=$('recoveryMessage');const setMessage=(text,type='')=>{message.textContent=text;message.className='recovery-message '+type};const setBusy=(busy)=>{const button=form?.querySelector('button[type=submit]');if(button)button.disabled=busy};
 const cleanUrl=()=>{const clean=new URL(location.href);clean.hash='';clean.search='';history.replaceState(null,document.title,clean.pathname+clean.search+clean.hash)};
 if(!sb){setMessage('Il servizio non è disponibile. Riprova più tardi.','error');if(form)form.querySelector('button[type=submit]').disabled=true}
