@@ -3,7 +3,9 @@
 
   window.YEX_ENV = 'public';
   window.YEX_CONFIG = undefined;
-  document.write('<script src="config.production.js?v=20261117-public-production-1"><\/script>');
+  if (!window.YEX_PRODUCTION_CONFIG) {
+    document.write('<script src="config.production.js?v=20261117-public-production-2"><\/script>');
+  }
   const config = window.YEX_PRODUCTION_CONFIG;
   const valid = config?.enabled === true &&
     config?.supabaseUrl === 'https://vviyfrlvikokmcwhmhys.supabase.co' &&
