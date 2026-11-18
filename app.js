@@ -51,7 +51,20 @@ function renderFirstLoginVerificationNotice(){
  }
  const host=document.getElementById('pageContent');host?.parentElement?.insertBefore(notice,host);
 }
-async function enter(s){session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();renderFirstLoginVerificationNotice();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();document.getElementById('yeFirstLoginVerification')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
+async function enter(s){
+ if(s?.user?.user_metadata?.ye_admin_provisioned===true){
+  const [profileCheck,walletCheck]=await Promise.all([
+   sb.from('profiles').select('id').eq('id',s.user.id).maybeSingle(),
+   sb.from('wallets').select('currency').eq('user_id',s.user.id).in('currency',['EUR','USDT','BTC','ETH'])
+  ]);
+  const currencies=new Set((walletCheck.data||[]).map(wallet=>wallet.currency));
+  if(profileCheck.error||!profileCheck.data||walletCheck.error||!['EUR','USDT','BTC','ETH'].every(currency=>currencies.has(currency))){
+   await sb.auth.signOut();session=null;
+   toast('Attivazione in attesa: il profilo o i portafogli non sono ancora completi. Contatta l’assistenza; non creare un secondo account.');
+   return;
+  }
+ }
+ session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();renderFirstLoginVerificationNotice();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();document.getElementById('yeFirstLoginVerification')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
 async function loadPrivate(){if(!sb||!session)return;const id=session.user.id;const {error:provisionError}=await sb.rpc('ye_ensure_my_wallets');if(provisionError){console.error('Provisioning profilo/wallet non riuscito:',provisionError);toast('Profilo e wallet non disponibili: '+provisionError.message);profile=null;wallets=[];return}const [p,w]=await Promise.all([sb.from('profiles').select('id,display_name,first_name,last_name,phone_verified,created_at').eq('id',id).maybeSingle(),sb.from('wallets').select('id,currency,balance,locked_balance').eq('user_id',id)]);if(p.error)toast('Profilo non disponibile: '+p.error.message);if(w.error)toast('Wallet non disponibili: '+w.error.message);profile=p.data||null;wallets=w.data||[]}
 async function checkAdmin(){
  isAdmin=false;
