@@ -36,6 +36,39 @@ Deno.serve(async (request) => {
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return respond(400, { ok: false, error: "Invalid JSON" }); }
+  if (body.action === 'list') {
+    const page = Number(body.page ?? 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000)
+      return respond(400, { ok: false, error: 'Invalid page' });
+    const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: authPage, error: listError } = await admin.auth.admin.listUsers({ page, perPage: 100 });
+    if (listError || !authPage) {
+      console.error('admin list users failed', listError?.code || 'unknown');
+      return respond(503, { ok: false, error: 'Customer list unavailable' });
+    }
+    const ids = authPage.users.map(user => user.id);
+    let profiles: { id: string; display_name: string | null }[] = [];
+    let walletRows: { user_id: string; currency: string }[] = [];
+    if (ids.length) {
+      const [p, w] = await Promise.all([
+        admin.from('profiles').select('id,display_name').in('id',ids),
+        admin.from('wallets').select('user_id,currency').in('user_id',ids),
+      ]);
+      if (p.error || w.error) return respond(503, { ok: false, error: 'Customer profile or wallet lookup unavailable' });
+      profiles = p.data || []; walletRows = w.data || [];
+    }
+    const names = new Map(profiles.map(p => [p.id, p.display_name]));
+    const counts = new Map<string, number>();
+    for (const wallet of walletRows) counts.set(wallet.user_id, (counts.get(wallet.user_id) || 0) + 1);
+    return respond(200, { ok: true, page, has_more: authPage.users.length === 100,
+      users: authPage.users.map(user => ({
+        user_id: user.id, email: user.email || null, display_name: names.get(user.id) || null,
+        email_confirmed_at: user.email_confirmed_at || null,
+        created_at: user.created_at, wallet_count: counts.get(user.id) || 0,
+        admin_provisioned: user.app_metadata?.ye_admin_provisioned === true,
+      })),
+    });
+  }
   // Recovery never creates another Auth identity and never resets existing balances.
   if (body.action === 'repair') {
     const userId = String(body.user_id || '').trim();
