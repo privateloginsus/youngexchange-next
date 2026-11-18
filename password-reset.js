@@ -18,6 +18,7 @@
   const login = $('loginLink');
   let recoveryAuthorized = false;
   let updateCompleted = false;
+  let firstAccessFlow = false;
 
   const setMessage = (text, type = '') => {
     message.textContent = text;
@@ -109,6 +110,14 @@
       const { data: verified, error: identityError } = await supabaseClient.auth.getUser();
       if (identityError || verified?.user?.id !== session.user.id) throw new Error('invalid_callback_identity');
       const isInvite = callback.callbackType === 'invite';
+      firstAccessFlow = isInvite;
+      if(isInvite){
+        document.title='Certifica primo accesso | YoungExchange';
+        $('resetTitle').textContent='Certifica il primo accesso';
+        const submit=form.querySelector('button[type="submit"]');
+        if(submit)submit.textContent='Certifica primo accesso e imposta password →';
+        if(login)login.textContent='Vai a YoungExchange →';
+      }
       if (isInvite) {
         if (verified.user.app_metadata?.ye_admin_provisioned !== true) throw new Error('invalid_invitation_account');
         // Do not activate a partially provisioned account.
@@ -124,7 +133,7 @@
       }
       recoveryAuthorized = true;
       form.hidden = false;
-      description.textContent = 'Scegli una nuova password sicura per il tuo account YoungExchange.';
+      description.textContent = isInvite ? 'Il tuo invito è stato verificato. Imposta una password sicura per attivare l’accesso; la verifica del numero di telefono si completa dopo il login.' : 'Scegli una nuova password sicura per il tuo account YoungExchange.';
       setMessage('');
     } catch (error) {
       await supabaseClient.auth.signOut().catch(() => {});
@@ -166,7 +175,7 @@
       updateCompleted = true;
       recoveryAuthorized = false;
       await supabaseClient.auth.signOut();
-      finish('Password aggiornata correttamente. Ora puoi accedere con la nuova password.', 'success');
+      finish(firstAccessFlow ? 'Primo accesso certificato: password impostata. Ora entra in YoungExchange e completa la verifica del telefono.' : 'Password aggiornata correttamente. Ora puoi accedere con la nuova password.', 'success');
     } catch {
       setMessage('Non è stato possibile aggiornare la password. Il link potrebbe essere scaduto: richiedi un nuovo link.', 'error');
     } finally {
