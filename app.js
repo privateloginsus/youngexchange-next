@@ -44,7 +44,8 @@ function renderFirstLoginVerificationNotice(){
  notice.style.cssText='margin:14px 20px;padding:16px;border:1px solid #35e9a6;border-radius:12px;background:#08291e;color:#e4fff0';
  const heading=document.createElement('strong');heading.textContent='Completa la verifica del tuo conto';
  const description=document.createElement('p');
- description.textContent='Email: '+(session.user.email_confirmed_at?'confermata':'da confermare')+' · Telefono: '+(session.user.phone_confirmed_at?'confermato':'da verificare')+'. La creazione amministrativa del conto non sostituisce la verifica dei recapiti.';
+ const manualReview=session.user.app_metadata?.ye_phone_manual_review;const manualConfirmed=Boolean(manualReview?.phone&&manualReview.phone===session.user.user_metadata?.phone_pending_verification);
+ description.textContent='Email: '+(session.user.email_confirmed_at?'confermata':'da confermare')+' · Telefono: '+(session.user.phone_confirmed_at?'verificato tramite SMS':manualConfirmed?'recapito confermato con controllo amministrativo (OTP non effettuato)':'da verificare')+'. La conferma amministrativa del recapito non equivale alla verifica SMS di autenticazione.';
  notice.append(heading,description);
  if(!session.user.phone_confirmed_at){
   const button=document.createElement('button');button.type='button';button.className='secondary-btn';button.textContent='Verifica il numero con codice SMS';button.addEventListener('click',()=>phoneVerification());notice.append(button);
