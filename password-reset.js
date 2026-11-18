@@ -58,7 +58,7 @@
     const refreshToken = hash.get('refresh_token');
     const callbackType = hash.get('type') || query.get('type');
 
-    if (code) return { kind: 'pkce', code };
+    if (code) return { kind: 'pkce', code, callbackType };
     if (accessToken || refreshToken || callbackType) {
       return {
         kind: 'token',
@@ -105,13 +105,30 @@
       const callback = readCallback();
       const session = await authorizeFromCallback(callback);
       if (!session?.user?.id) throw new Error('invalid_recovery_session');
-      if (session.user.user_metadata?.ye_admin_provisioned !== true && callback.kind === 'token' && callback.callbackType === 'invite') throw new Error('invalid_invitation_account');
+      // Confirm identity with Auth rather than trusting the callback's embedded user.
+      const { data: verified, error: identityError } = await supabaseClient.auth.getUser();
+      if (identityError || verified?.user?.id !== session.user.id) throw new Error('invalid_callback_identity');
+      const isInvite = callback.callbackType === 'invite';
+      if (isInvite) {
+        if (verified.user.app_metadata?.ye_admin_provisioned !== true) throw new Error('invalid_invitation_account');
+        // Do not activate a partially provisioned account.
+        const [profile, wallets] = await Promise.all([
+          supabaseClient.from('profiles').select('id').eq('id',session.user.id).maybeSingle(),
+          supabaseClient.from('wallets').select('currency').eq('user_id',session.user.id).in('currency',['EUR','USDT','BTC','ETH'])
+        ]);
+        const available = new Set((wallets.data || []).map(w => w.currency));
+        if (profile.error || !profile.data || wallets.error ||
+            !['EUR','USDT','BTC','ETH'].every(currency => available.has(currency))) {
+          throw new Error('incomplete_account');
+        }
+      }
       recoveryAuthorized = true;
       form.hidden = false;
       description.textContent = 'Scegli una nuova password sicura per il tuo account YoungExchange.';
       setMessage('');
-    } catch {
-      finish('Il link di recupero non è valido, è scaduto o è già stato utilizzato. Richiedi un nuovo link.', 'error');
+    } catch (error) {
+      await supabaseClient.auth.signOut().catch(() => {});
+      finish(error?.message === 'incomplete_account' ? 'Il conto è ancora in preparazione. Contatta l’assistenza per completare profilo e portafogli; non creare un secondo account.' : 'Il link di attivazione o recupero non è valido, è scaduto o è già stato utilizzato. Richiedi un nuovo link.', 'error');
     }
   };
 
