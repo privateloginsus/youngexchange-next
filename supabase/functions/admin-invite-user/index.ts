@@ -67,8 +67,8 @@ Deno.serve(async (request) => {
   if (profileError) {
     console.error('admin profile provisioning failed', profileError.code || 'unknown');
     return respond(207, { ok: false, partial: true, user_id: data.user.id,
-      identity_created: true, profile_created: false, wallets_created: false,
-      error: 'Identity created but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });
+      identity_created: true, invitation_requested: true, profile_created: false, wallets_created: false,
+      error: 'Invitation requested, but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });
   }
   // Insert only missing wallets. Never overwrite any existing wallet or balance.
   // Supported currencies match the account dashboard; new wallets start at zero.
@@ -80,14 +80,14 @@ Deno.serve(async (request) => {
   if (walletError) {
     console.error('admin wallet provisioning failed', walletError.code || 'unknown');
     return respond(207, { ok: false, partial: true, user_id: data.user.id,
-      identity_created: true, profile_created: true, wallets_created: false,
+      identity_created: true, invitation_requested: true, profile_created: true, wallets_created: false,
       email_verified: false, phone_verified: false,
-      error: 'Identity and profile created; wallet provisioning failed. Do not recreate account; reconcile wallets first.' });
+      error: 'Invitation requested and profile created; wallet provisioning failed. Do not recreate account; reconcile wallets first.' });
   }
   return respond(201, {
     ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
     email_verified: false, phone_verified: false,
-    wallets_created: true, wallet_currencies: currencies, invitation_sent: true, otp_sent: false,
+    wallets_created: true, wallet_currencies: currencies, invitation_requested: true, otp_sent: false,
     next_step: 'Customer opens the invitation link, sets a password, then verifies phone by SMS',
   });
 });
