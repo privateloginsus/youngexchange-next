@@ -83,7 +83,7 @@
       return data.session;
     }
 
-    if (callback.callbackType !== 'recovery' || !callback.accessToken || !callback.refreshToken) {
+    if (!['recovery', 'invite'].includes(callback.callbackType) || !callback.accessToken || !callback.refreshToken) {
       throw new Error('invalid_recovery_token');
     }
 
@@ -105,6 +105,7 @@
       const callback = readCallback();
       const session = await authorizeFromCallback(callback);
       if (!session?.user?.id) throw new Error('invalid_recovery_session');
+      if (session.user.user_metadata?.ye_admin_provisioned !== true && callback.kind === 'token' && callback.callbackType === 'invite') throw new Error('invalid_invitation_account');
       recoveryAuthorized = true;
       form.hidden = false;
       description.textContent = 'Scegli una nuova password sicura per il tuo account YoungExchange.';
