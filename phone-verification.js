@@ -69,11 +69,27 @@
     if(!/^\d{6}$/.test(token)){say('Inserisci tutte e 6 le cifre ricevute via SMS.');return;}
     setBusy(true,'Verifica protetta del codice…');
     try{
-      await signedIn();
+      var originalUser=await signedIn();
       var result=await client.auth.verifyOtp({phone:phone,token:token,type:'phone_change'});
       if(result.error)throw result.error;
-      var user=await signedIn();
-      if(!user.phone_confirmed_at||user.phone!==phone)throw new Error('Il servizio non ha ancora confermato il numero. Riprova.');
+      if(result.data?.user?.id&&result.data.user.id!==originalUser.id)
+        throw new Error('Il codice è stato accettato, ma la risposta non corrisponde al tuo account. Non richiedere altri codici e contatta l’assistenza.');
+      // Phone confirmation can arrive asynchronously in the refreshed Auth user.
+      // Do not display success unless the authenticated user and verified number both match.
+      var isConfirmed=function(user){return !!(user&&user.id===originalUser.id&&user.phone===phone&&user.phone_confirmed_at);};
+      var user=result.data?.user;
+      if(!isConfirmed(user)){
+        for(var attempt=0;attempt<3;attempt++){
+          await new Promise(function(resolve){setTimeout(resolve,450*(attempt+1));});
+          var state=await client.auth.getUser();
+          if(state.error)throw state.error;
+          user=state.data?.user;
+          if(isConfirmed(user))break;
+        }
+      }
+      if(!isConfirmed(user)){
+        throw new Error('Il codice è stato elaborato, ma lo stato del numero non è ancora aggiornato per questo account. Torna nelle Impostazioni, aggiorna la pagina e controlla lo stato. Se rimane da verificare, contatta l’assistenza.');
+      }
       verified=true;
       await new Promise(function(resolve){setTimeout(resolve,750);});
       setBusy(false);
