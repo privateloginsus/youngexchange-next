@@ -85,7 +85,7 @@
   $('phoneRestart').addEventListener('click',function(){if(busy)return;phone='';$('phoneOtp').value='';help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.';setStage(0);setBusy(false);say('');$('phoneNumber').focus();});
   $('phoneResend').addEventListener('click',async function(){
     if(busy||!phone)return;say('');setBusy(true,'Invio nuovo SMS…');
-    try{await requestSms(phone);setBusy(false);$('phoneOtp').value='';$('phoneOtp').focus();}
+    try{await signedIn();var response=await client.auth.resend({type:'phone_change',phone:phone});if(response.error)throw response.error;setBusy(false);$('phoneOtp').value='';$('phoneOtp').focus();}
     catch(err){setBusy(false);say(readable(err));}
   });
 })();
