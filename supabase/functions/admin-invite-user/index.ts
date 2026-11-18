@@ -37,37 +37,24 @@ Deno.serve(async (request) => {
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return respond(400, { ok: false, error: "Invalid JSON" }); }
   if (body.action === 'list') {
-    const page = Number(body.page ?? 1);
-    if (!Number.isSafeInteger(page) || page < 1 || page > 1000)
-      return respond(400, { ok: false, error: 'Invalid page' });
-    const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: authPage, error: listError } = await admin.auth.admin.listUsers({ page, perPage: 100 });
-    if (listError || !authPage) {
-      console.error('admin list users failed', listError?.code || 'unknown');
-      return respond(503, { ok: false, error: 'Customer list unavailable' });
+    // The Production project rejects service-role PostgREST reads with HTTP 403.
+    // Use the existing, admin-checked SECURITY DEFINER database RPC instead.
+    const { data: rows, error: listError } = await caller.rpc('admin_list_users');
+    if (listError || !Array.isArray(rows)) {
+      console.error('admin_list_users failed', listError?.code || 'unknown');
+      return respond(503, { ok: false, error: 'Elenco clienti non disponibile: controllare admin_list_users' });
     }
-    const ids = authPage.users.map(user => user.id);
-    let profiles: { id: string; display_name: string | null }[] = [];
-    let walletRows: { user_id: string; currency: string }[] = [];
-    if (ids.length) {
-      const [p, w] = await Promise.all([
-        admin.from('profiles').select('id,display_name').in('id',ids),
-        admin.from('wallets').select('user_id,currency').in('user_id',ids),
-      ]);
-      if (p.error || w.error) return respond(503, { ok: false, error: 'Customer profile or wallet lookup unavailable' });
-      profiles = p.data || []; walletRows = w.data || [];
-    }
-    const names = new Map(profiles.map(p => [p.id, p.display_name]));
-    const counts = new Map<string, number>();
-    for (const wallet of walletRows) counts.set(wallet.user_id, (counts.get(wallet.user_id) || 0) + 1);
-    return respond(200, { ok: true, page, has_more: authPage.users.length === 100,
-      users: authPage.users.map(user => ({
-        user_id: user.id, email: user.email || null, display_name: names.get(user.id) || null,
-        email_confirmed_at: user.email_confirmed_at || null,
-        created_at: user.created_at, wallet_count: counts.get(user.id) || 0,
-        admin_provisioned: user.app_metadata?.ye_admin_provisioned === true,
-      })),
-    });
+    const users = await Promise.all(rows.map(async (row) => {
+      const { data: wallets, error: walletError } = await caller.rpc('admin_list_wallets', { p_user_id: row.user_id });
+      return {
+        user_id: row.user_id,
+        email: row.email,
+        display_name: row.display_name,
+        created_at: row.registered_at,
+        wallet_count: walletError ? null : (wallets || []).length,
+      };
+    }));
+    return respond(200, { ok: true, page: 1, has_more: false, users });
   }
   // Recovery never creates another Auth identity and never resets existing balances.
   if (body.action === 'repair') {
@@ -130,31 +117,22 @@ Deno.serve(async (request) => {
     return respond(207, { ok: false, partial: true, identity_created: true, user_id: data.user.id,
       invitation_requested: true, error: 'Account invited but secure provisioning marker failed; manual review required' });
   }
-  // The Production profiles table has id, display_name, phone_verified, created_at.
-  // Wallets have UNIQUE(user_id,currency) and nonnegative balance constraints.
-  // Auth identity creation is successful even if the separate profile step fails.
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: data.user.id, display_name: [firstName, lastName].join(' '), phone_verified: false,
-  }, { onConflict: 'id' });
-  if (profileError) {
-    console.error('admin profile provisioning failed', profileError.code || 'unknown');
-    return respond(207, { ok: false, partial: true, user_id: data.user.id,
-      identity_created: true, invitation_requested: true, profile_created: false, wallets_created: false,
-      error: 'Invitation requested, but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });
+  // The auth.users INSERT trigger already creates a profile and four zero-balance
+  // wallets. Verify using authorized admin RPCs; no REST writes or balance reset.
+  const { data: accounts, error: profileError } = await caller.rpc('admin_list_users');
+  const found = Array.isArray(accounts) && accounts.some((account) => account.user_id === data.user.id);
+  if (profileError || !found) {
+    console.error('admin profile verification failed', profileError?.code || 'not_found');
+    return respond(207, { ok: false, partial: true, identity_created: true, user_id: data.user.id,
+      invitation_requested: true, error: 'Identità creata, profilo non verificabile. Non ripetere la creazione.' });
   }
-  // Insert only missing wallets. Never overwrite any existing wallet or balance.
-  // Supported currencies match the account dashboard; new wallets start at zero.
   const currencies = ['EUR', 'USDT', 'BTC', 'ETH'];
-  const { error: walletError } = await admin.from('wallets').upsert(
-    currencies.map((currency) => ({ user_id: data.user.id, currency, balance: 0, locked_balance: 0 })),
-    { onConflict: 'user_id,currency', ignoreDuplicates: true },
-  );
-  if (walletError) {
-    console.error('admin wallet provisioning failed', walletError.code || 'unknown');
-    return respond(207, { ok: false, partial: true, user_id: data.user.id,
-      identity_created: true, invitation_requested: true, profile_created: true, wallets_created: false,
-      email_verified: false, phone_verified: false,
-      error: 'Invitation requested and profile created; wallet provisioning failed. Do not recreate account; reconcile wallets first.' });
+  const { data: wallets, error: walletError } = await caller.rpc('admin_list_wallets', { p_user_id: data.user.id });
+  const verified = !walletError && currencies.every(currency => (wallets || []).some(wallet => wallet.currency === currency));
+  if (!verified) {
+    console.error('admin wallet verification failed', walletError?.code || 'wallets_missing');
+    return respond(207, { ok: false, partial: true, identity_created: true, user_id: data.user.id,
+      invitation_requested: true, error: 'Identità creata, wallet non verificabili. Non ripetere la creazione.' });
   }
   return respond(201, {
     ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
