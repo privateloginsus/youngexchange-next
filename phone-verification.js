@@ -24,6 +24,7 @@
   function readable(err){
     var code=String(err&&err.code||'').toLowerCase();
     var txt=String(err&&err.message||'');
+    if(/primary compliance profile is not approved|twilio.com\/docs\/errors\/20003/i.test(txt))return 'Invio SMS temporaneamente non disponibile: Twilio richiede ancora l’approvazione del profilo di conformità del servizio. Riprova dopo l’attivazione o contatta l’assistenza YoungExchange.';
     if(/phone.*disabled|sms.*disabled|sms.*not configured|phone.*not configured|provider.*disabled/i.test(txt)||/phone_provider_disabled|sms_provider_disabled/.test(code))return 'Il servizio SMS non è ancora attivo sul progetto YoungExchange. Contatta l’assistenza.';
     if(/token.*expired|otp.*expired/i.test(txt))return 'Codice scaduto. Richiedi un nuovo SMS.';
     if(/invalid.*otp|invalid.*token|token.*invalid/i.test(txt))return 'Il codice non è corretto. Controlla le 6 cifre e riprova.';
