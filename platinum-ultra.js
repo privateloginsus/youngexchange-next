@@ -4,7 +4,7 @@ const labels=[['users','Utenti e conti','♙'],['informative-records','Registraz
 function init(){
 // Logo Y: la navigazione resta quella del link #dashboard; su mobile chiude anche il menu laterale.
 document.querySelector('.side-brand')?.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
-const nav=document.querySelector('#nav'),link=document.querySelector('#adminNavLink');if(!nav)return;if(!link){window.addEventListener('ye:admin-authorized',init,{once:true});return}if(document.getElementById('yeUltraAdminSubnav'))return;
+const nav=document.querySelector('#nav'),link=document.querySelector('#adminNavLink');if(!nav)return;if(!link){window.addEventListener('ye:admin-authorized',init);return}if(document.getElementById('yeUltraAdminSubnav'))return;
 const sub=document.createElement('div');sub.className='ye-ultra-subnav';sub.id='yeUltraAdminSubnav';sub.setAttribute('aria-label','Sottosezioni amministrazione');sub.innerHTML=labels.map(([id,title,icon])=>`<button type="button" data-ultra-admin="${id}"><span class="ye-subicon">${icon}</span>${title}</button>`).join('');link.insertAdjacentElement('afterend',sub);
 const arrow=document.createElement('span');arrow.className='ye-ultra-arrow';arrow.textContent='⌄';link.append(arrow);link.setAttribute('aria-expanded','false');link.setAttribute('aria-controls',sub.id);
 const open=(value)=>{sub.classList.toggle('open',value);arrow.classList.toggle('open',value);link.setAttribute('aria-expanded',String(value))};
