@@ -443,8 +443,40 @@ async function adminSelectSection(section){
   if(currentUserId&&!users.some(u=>u.user_id===currentUserId))users.unshift({
    user_id:currentUserId,email:session.user.email,display_name:profile?.display_name||'Il mio account'
   });
+  const walletSummaries=await Promise.all(users.map(async u=>{
+   try{
+    const wallets=await adminRpc('admin_list_wallets',{p_user_id:u.user_id});
+    return {user:u,wallets,error:null};
+   }catch(error){return {user:u,wallets:[],error:error.message||String(error)}}
+  }));
+  const sumDisplay=(account,currency)=>{
+   const item=account.wallets.find(w=>w.currency===currency);
+   if(account.error)return 'Non disponibile';
+   return item?fmt(item.total_balance,currency==='EUR'?2:8):'Wallet assente';
+  };
+  const overallValue=account=>{
+   if(account.error)return 'Non disponibile';
+   const estimated=account.wallets.reduce((state,w)=>{
+     const v=Number(w.total_balance);
+     if(!Number.isFinite(v))return {...state,missing:true};
+     if(w.currency==='EUR')return {...state,amount:state.amount+v};
+     if(v===0)return state;
+     const asset=assets.find(a=>a.symbol===w.currency);
+     const price=asset?Number(q(asset)?.current_price):NaN;
+     return Number.isFinite(price)&&price>0?{...state,amount:state.amount+v*price}:{...state,missing:true};
+   },{amount:0,missing:false});
+   return estimated.missing?'Stima non disponibile':eur(estimated.amount);
+  };
+  const summaryHTML='<section class="mt"><h3>Riepilogo saldi per account</h3><p class="small">Saldi interni effettivamente registrati, non richieste di deposito. La stima in EUR dipende dai prezzi disponibili. Nessuna modifica ai wallet.</p>'+
+   '<div class="table-wrap"><table><thead><tr><th>Account</th><th>EUR</th><th>BTC</th><th>ETH</th><th>USDT</th><th>Patrimonio stimato EUR</th></tr></thead><tbody>'+
+   walletSummaries.map(account=>'<tr><td>'+esc(account.user.email||account.user.display_name||account.user.user_id)+'</td>'+
+    ['EUR','BTC','ETH','USDT'].map(currency=>'<td>'+esc(sumDisplay(account,currency))+'</td>').join('')+
+    '<td>'+esc(overallValue(account))+'</td></tr>').join('')+
+   '</tbody></table></div>'+
+   (listError||!listData?.ok?'<p role="alert">Elenco account non disponibile: '+esc(listData?.error||listError?.message||'errore')+'</p>':'')+
+   (listData?.has_more?'<p class="small">Sono presenti altri account oltre la prima pagina: il riepilogo qui non è completo.</p>':'')+'</section>';
   const options=users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===currentUserId?'selected':'')+'>'+esc((u.user_id===currentUserId?'Il mio account · ':'')+(u.email||u.display_name||u.user_id))+'</option>').join('');
-  view('Saldi e riconciliazione','<p class="small">Verifica i wallet di ogni account. <strong>Le attività registrate non sono automaticamente saldi.</strong> Il saldo interno non prova un accredito bancario o blockchain. Nessun importo può essere modificato da questa pagina.</p><label for="adminBalanceAuditUser">Seleziona account</label><select id="adminBalanceAuditUser">'+options+'</select><button type="button" class="secondary-btn" id="adminBalanceAuditLoad">Visualizza saldi</button><p id="adminBalanceAuditStatus" role="status" class="small"></p><div id="adminBalanceAuditTable"></div>');
+  view('Saldi e riconciliazione',summaryHTML+'<p class="small">Verifica i wallet di ogni account. <strong>Le attività registrate non sono automaticamente saldi.</strong> Il saldo interno non prova un accredito bancario o blockchain. Nessun importo può essere modificato da questa pagina.</p><label for="adminBalanceAuditUser">Seleziona account</label><select id="adminBalanceAuditUser">'+options+'</select><button type="button" class="secondary-btn" id="adminBalanceAuditLoad">Visualizza saldi</button><p id="adminBalanceAuditStatus" role="status" class="small"></p><div id="adminBalanceAuditTable"></div>');
   const loadBalances=async()=>{
    const selected=workspace.querySelector('#adminBalanceAuditUser')?.value;
    const status=workspace.querySelector('#adminBalanceAuditStatus');
@@ -526,7 +558,7 @@ async function recordAdminBalance(event,userId){
   kind=form.elements.kind.value,reference=form.elements.reference.value.trim(),
   source=form.elements.source.value.trim(),localDate=form.elements.reported_at.value;
  if(!isAdmin||!session){status.textContent='Sessione amministrativa non autorizzata.';return}
- if(!/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(amount)||Number(amount)<=0||reason.length<8||reason.length>500){
+ if(!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(amount)||Number(amount)<=0||reason.length<8||reason.length>500){
   status.textContent='Inserisci importo positivo e motivazione tra 8 e 500 caratteri.';return
  }
  if(kind==='deposit_request'&&!reference){status.textContent='Inserisci il riferimento per la richiesta di deposito.';return}
