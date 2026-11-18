@@ -36,6 +36,35 @@ Deno.serve(async (request) => {
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return respond(400, { ok: false, error: "Invalid JSON" }); }
+  // Recovery never creates another Auth identity and never resets existing balances.
+  if (body.action === 'repair') {
+    const userId = String(body.user_id || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId))
+      return respond(400, { ok: false, error: 'Valid user_id required' });
+    const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: account, error: lookupError } = await admin.auth.admin.getUserById(userId);
+    if (lookupError || !account?.user || account.user.user_metadata?.ye_admin_provisioned !== true)
+      return respond(404, { ok: false, error: 'Admin-provisioned account not found' });
+    const { data: existingProfile, error: profileLookupError } = await admin.from('profiles').select('id').eq('id',userId).maybeSingle();
+    if (profileLookupError) return respond(500, { ok: false, error: 'Profile lookup failed; no changes made' });
+    if (!existingProfile) {
+      const meta = account.user.user_metadata || {};
+      const displayName = [meta.first_name, meta.last_name].filter(Boolean).join(' ').trim() || account.user.email || 'Cliente';
+      const { error: insertProfileError } = await admin.from('profiles').insert({ id: userId, display_name: displayName, phone_verified: false });
+      if (insertProfileError && insertProfileError.code !== '23505')
+        return respond(500, { ok: false, partial: true, error: 'Profile repair failed; no wallets changed' });
+    }
+    const currencies = ['EUR','USDT','BTC','ETH'];
+    const { error: repairError } = await admin.from('wallets').upsert(
+      currencies.map(currency => ({ user_id: userId, currency, balance: 0, locked_balance: 0 })),
+      { onConflict: 'user_id,currency', ignoreDuplicates: true },
+    );
+    if (repairError) return respond(500, { ok: false, partial: true, error: 'Wallet repair failed; inspect account before retry' });
+    const { data: verifiedWallets, error: verifyError } = await admin.from('wallets').select('currency').eq('user_id',userId).in('currency',currencies);
+    if (verifyError || !currencies.every(currency => verifiedWallets?.some(wallet => wallet.currency === currency)))
+      return respond(500, { ok: false, partial: true, error: 'Wallet verification failed; inspect account' });
+    return respond(200, { ok: true, repaired: true, user_id: userId, wallets_present: currencies, balances_unchanged: true, invitation_resent: false });
+  }
   const email = String(body.email || "").trim().toLowerCase();
   const firstName = String(body.first_name || "").trim();
   const lastName = String(body.last_name || "").trim();
