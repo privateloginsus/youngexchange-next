@@ -37,7 +37,7 @@ for(const b of document.querySelectorAll('[data-mode]'))b.addEventListener('clic
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();if(!sb){toast('Backend pubblico non configurato; accesso disabilitato.');return}const email=$('email').value.trim(),password=$('password').value;const b=$('authSubmit');b.disabled=true;try{let result;if(mode==='recovery'){result=await sb.auth.updateUser({password});if(!result.error){toast('Password aggiornata. Accedi con la nuova password.');await sb.auth.signOut();exit()}}else if(mode==='register'){result=await sb.auth.signUp({email,password,options:{emailRedirectTo:authRedirectUrl(),data:{display_name:$('displayName').value.trim().slice(0,80)}}});if(!result.error)toast('Registrazione inviata. Controlla la tua email e conferma l’account.')}else if(mode==='forgot'){result=await sb.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirectUrl()});if(!result.error)toast('Se l’indirizzo è registrato, riceverai un link di recupero.')}else{result=await sb.auth.signInWithPassword({email,password});if(!result.error&&result.data.session)await enter(result.data.session)}if(result?.error)throw result.error}catch(err){toast(authErrorMessage(err))}finally{b.disabled=false}});
 function renderFirstLoginVerificationNotice(){
  const old=document.getElementById('yeFirstLoginVerification');old?.remove();
- if(isAdmin||!session?.user||!session.user.user_metadata?.ye_admin_provisioned)return;
+ if(isAdmin||!session?.user||!session.user.app_metadata?.ye_admin_provisioned)return;
  if(session.user.email_confirmed_at&&session.user.phone_confirmed_at)return;
  const notice=document.createElement('section');
  notice.id='yeFirstLoginVerification';notice.setAttribute('role','status');
