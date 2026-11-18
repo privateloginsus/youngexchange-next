@@ -36,6 +36,27 @@ Deno.serve(async (request) => {
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return respond(400, { ok: false, error: "Invalid JSON" }); }
+  // Save an administrator-proposed contact without confirming possession of that number.
+  if (body.action === 'set_pending_phone') {
+    const userId = String(body.user_id || '').trim();
+    const phone = String(body.phone || '').replace(/[\\s()-]/g, '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId) ||
+        !/^\\+[1-9]\\d{7,14}$/.test(phone))
+      return respond(400, { ok: false, error: 'Identificativo o numero non valido' });
+    const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: target, error: lookupError } = await admin.auth.admin.getUserById(userId);
+    if (lookupError || !target?.user) return respond(404, { ok: false, error: 'Cliente non trovato' });
+    if (target.user.id === identity.user.id) return respond(400, { ok: false, error: 'Usa la verifica personale per il tuo numero' });
+    const { error: saveError } = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: { ...target.user.user_metadata, phone_pending_verification: phone }
+    });
+    if (saveError) {
+      console.error('admin pending phone update failed', saveError.code || 'unknown');
+      return respond(503, { ok: false, error: 'Numero non salvato' });
+    }
+    return respond(200, { ok: true, user_id: userId, phone_pending_verification: phone,
+      phone_verified: false, message: 'Numero salvato. Il cliente deve confermarlo tramite OTP.' });
+  }
   if (body.action === 'list') {
     const { data: rows, error: listError } = await caller.rpc('admin_list_users');
     if (listError || !Array.isArray(rows)) {
@@ -60,6 +81,9 @@ Deno.serve(async (request) => {
         email_confirmed_at: confirmations.get(row.user_id) || null,
         email_status_known: confirmations.has(row.user_id),
         wallet_count: walletError ? null : (wallets || []).length,
+        phone_pending_verification: authUsers.get(row.user_id)?.user_metadata?.phone_pending_verification || null,
+        phone: authUsers.get(row.user_id)?.phone || null,
+        phone_confirmed_at: authUsers.get(row.user_id)?.phone_confirmed_at || null,
       };
     }));
     return respond(200, { ok: true, page: 1, has_more: false, users });
