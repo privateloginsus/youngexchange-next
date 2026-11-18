@@ -5,6 +5,6 @@ window.YEX_PRODUCTION_CONFIG = Object.freeze({
   supabaseUrl: 'https://vviyfrlvikokmcwhmhys.supabase.co',
   supabaseProjectRef: 'vviyfrlvikokmcwhmhys',
   supabasePublishableKey: 'sb_publishable_FnxuSuwQMkEZRw7Q9xK8TA_D1OV4Yri',
-  crispWebsiteId: '',
+  crispWebsiteId: '83491e2c-2abb-4c0b-9d63-bcf63a9f3435',
   financialOperationsEnabled: false
 });
