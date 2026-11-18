@@ -1,6 +1,6 @@
 // YoungExchange admin-only account provisioning.
-// This function intentionally creates an unverified Auth identity only.
-// Wallet creation, OTP enrollment and ledger changes are separate operations.
+// Creates an unverified Auth identity, profile, and zero-balance wallets.
+// OTP enrollment and ledger changes remain separate operations.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const headers = {
@@ -60,7 +60,7 @@ Deno.serve(async (request) => {
     return respond(409, { ok: false, error: "Account could not be created; check for duplicates and server configuration" });
   }
   // The Production profiles table has id, display_name, phone_verified, created_at.
-  // No schema or constraint assumptions are made about wallet provisioning here.
+  // Wallets have UNIQUE(user_id,currency) and nonnegative balance constraints.
   // Auth identity creation is successful even if the separate profile step fails.
   const { error: profileError } = await admin.from('profiles').upsert({
     id: data.user.id, display_name: [firstName, lastName].join(' '), phone_verified: false,
@@ -71,10 +71,24 @@ Deno.serve(async (request) => {
       identity_created: true, profile_created: false, wallets_created: false,
       error: 'Identity created but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });
   }
+  // Insert only missing wallets. Never overwrite any existing wallet or balance.
+  // Supported currencies match the account dashboard; new wallets start at zero.
+  const currencies = ['EUR', 'USDT', 'BTC', 'ETH'];
+  const { error: walletError } = await admin.from('wallets').upsert(
+    currencies.map((currency) => ({ user_id: data.user.id, currency, balance: 0, locked_balance: 0 })),
+    { onConflict: 'user_id,currency', ignoreDuplicates: true },
+  );
+  if (walletError) {
+    console.error('admin wallet provisioning failed', walletError.code || 'unknown');
+    return respond(207, { ok: false, partial: true, user_id: data.user.id,
+      identity_created: true, profile_created: true, wallets_created: false,
+      email_verified: false, phone_verified: false,
+      error: 'Identity and profile created; wallet provisioning failed. Do not recreate account; reconcile wallets first.' });
+  }
   return respond(201, {
     ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
     email_verified: false, phone_verified: false,
-    wallets_created: false, otp_sent: false,
-    next_step: "Provision wallets using a verified server-side workflow; enroll email and phone OTP at first login",
+    wallets_created: true, wallet_currencies: currencies, otp_sent: false,
+    next_step: 'Enroll email and phone OTP at first login',
   });
 });
