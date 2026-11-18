@@ -540,7 +540,9 @@ async function recordAdminBalance(event,userId){
  if(!confirm('Confermi di '+description+'?\\n\\nAccount: '+userId+'\\nValuta: '+currency+'\\nImporto: '+amount+'\\nMotivo: '+reason))return;
  button.disabled=true;status.textContent='Verifica e registrazione in corso…';
  // The same idempotency key must be reused if the response is uncertain.
- const key=form.dataset.idempotencyKey||crypto.randomUUID();form.dataset.idempotencyKey=key;
+ const fingerprint=JSON.stringify({userId,currency,kind,amount,reason,reference,source,reportedAt});
+ if(form.dataset.entryFingerprint!==fingerprint){form.dataset.idempotencyKey=crypto.randomUUID();form.dataset.entryFingerprint=fingerprint}
+ const key=form.dataset.idempotencyKey;
  try{
   const {data,error}=await sb.rpc('ye_admin_create_entry',{
    p_user_id:userId,p_currency:currency,p_amount:amount,p_kind:kind,
@@ -551,7 +553,7 @@ async function recordAdminBalance(event,userId){
   if(!data)throw new Error('Registrazione non confermata dal backend.');
   status.textContent='Operazione registrata con ID '+data+'. '+(kind==='deposit_request'?'Richiesta in attesa, nessun saldo accreditato.':'Saldo interno aggiornato dal database; non rappresenta un pagamento esterno.');
   toast('Registrazione interna confermata: '+String(data).slice(0,8));
-  delete form.dataset.idempotencyKey;
+  delete form.dataset.idempotencyKey;delete form.dataset.entryFingerprint;
   await loadAdminUser();
   if(session.user.id===userId)await loadPrivate();
  }catch(error){
