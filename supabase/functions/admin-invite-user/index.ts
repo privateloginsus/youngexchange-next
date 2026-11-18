@@ -68,7 +68,7 @@ Deno.serve(async (request) => {
     const {data:target,error:lookupError}=await admin.auth.admin.getUserById(userId);
     if(lookupError||!target?.user||userId===identity.user.id)return respond(404,{ok:false,error:'Cliente non disponibile'});
     const candidate=String(target.user.user_metadata?.phone_pending_verification||'').trim();
-    if(!/^\\+[1-9]\\d{7,14}$/.test(candidate))return respond(409,{ok:false,error:'Prima salva un numero valido da verificare'});
+    if(!/^\+[1-9]\d{7,14}$/.test(candidate))return respond(409,{ok:false,error:'Prima salva un numero valido da verificare'});
     const review={phone:candidate,method,reason,reviewed_by:identity.user.id,reviewed_at:new Date().toISOString()};
     const {error:saveError}=await admin.auth.admin.updateUserById(userId,{
       app_metadata:{...target.user.app_metadata,ye_phone_manual_review:review}
