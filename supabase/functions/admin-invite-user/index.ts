@@ -47,12 +47,11 @@ Deno.serve(async (request) => {
   }
 
   // Only server-side code receives the service-role credential.
-  // No email/phone confirmation is forged; no initial password is assigned.
+  // Invitation is emailed by Supabase Auth; no initial password or fake verification is assigned.
   const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: false,
-    user_metadata: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null, ye_admin_provisioned: true },
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: 'https://youngexchange.eu/reimposta-password.html',
+    data: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null, ye_admin_provisioned: true },
   });
   if (error) {
     // Avoid exposing Auth internals or account existence to the caller.
@@ -88,7 +87,7 @@ Deno.serve(async (request) => {
   return respond(201, {
     ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
     email_verified: false, phone_verified: false,
-    wallets_created: true, wallet_currencies: currencies, otp_sent: false,
-    next_step: 'Enroll email and phone OTP at first login',
+    wallets_created: true, wallet_currencies: currencies, invitation_sent: true, otp_sent: false,
+    next_step: 'Customer opens the invitation link, sets a password, then verifies phone by SMS',
   });
 });
