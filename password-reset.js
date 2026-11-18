@@ -41,7 +41,7 @@
   const renderRules = () => {
     const state = passwordState($('newPassword').value);
     Object.entries(state).forEach(([key, valid]) => {
-      $(`[data-rule="${key}"]`).classList.toggle('valid', valid);
+      document.querySelector(`[data-rule="${key}"]`)?.classList.toggle('valid', valid);
     });
     return Object.values(state).every(Boolean);
   };
