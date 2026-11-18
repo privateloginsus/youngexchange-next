@@ -47,6 +47,7 @@ Deno.serve(async (request) => {
     const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authPage, error: authListError } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 });
     if (authListError) console.error('auth user verification states unavailable', authListError.code || 'unknown');
+    const authUsers = new Map((authPage?.users || []).map(user => [user.id, user]));
     const confirmations = new Map((authPage?.users || []).map(user => [user.id, user.email_confirmed_at || null]));
     const users = await Promise.all(rows.map(async (row) => {
       const { data: wallets, error: walletError } = await caller.rpc('admin_list_wallets', { p_user_id: row.user_id });
@@ -54,7 +55,7 @@ Deno.serve(async (request) => {
       return {
         user_id: row.user_id,
         email: row.email,
-        display_name: row.display_name,
+        display_name: row.display_name || [authUsers.get(row.user_id)?.user_metadata?.first_name,authUsers.get(row.user_id)?.user_metadata?.last_name].filter(Boolean).join(' ') || null,
         created_at: row.registered_at,
         email_confirmed_at: confirmations.get(row.user_id) || null,
         email_status_known: confirmations.has(row.user_id),
