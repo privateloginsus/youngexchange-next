@@ -16,6 +16,13 @@
   window.YEX_CONFIG = valid ? config : undefined;
   window.YEX_PUBLIC_STARTUP_BLOCKED = !valid;
   if (valid) return;
+
+  // Recovery pages must render their own safe error state instead of being
+  // covered by the global startup overlay. Authentication remains disabled:
+  // YEX_CONFIG is undefined, so password-reset.js cannot create a client.
+  const isRecoveryPage = /(?:^|\/)(?:reimposta-password|recupera-password)\.html$/i.test(window.location.pathname);
+  if (isRecoveryPage) return;
+
   document.querySelectorAll('#authScreen, #appScreen').forEach(element => {
     element.hidden = true;
   });
