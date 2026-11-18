@@ -59,7 +59,20 @@ Deno.serve(async (request) => {
     console.error("admin account creation failed", error.code || error.status || "unknown");
     return respond(409, { ok: false, error: "Account could not be created; check for duplicates and server configuration" });
   }
-  // The Production profiles table only has id, display_name, phone_verified, created_at.\n  // No schema or constraint assumptions are made about wallet provisioning here.\n  // Auth identity creation is successful even if the separate profile step fails.\n  const { error: profileError } = await admin.from('profiles').upsert({\n    id: data.user.id, display_name: [firstName, lastName].join(' '), phone_verified: false,\n  }, { onConflict: 'id' });\n  if (profileError) {\n    console.error('admin profile provisioning failed', profileError.code || 'unknown');\n    return respond(207, { ok: false, partial: true, user_id: data.user.id,\n      identity_created: true, profile_created: false, wallets_created: false,\n      error: 'Identity created but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });\n  }\n  return respond(201, {\n    ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
+  // The Production profiles table has id, display_name, phone_verified, created_at.
+  // No schema or constraint assumptions are made about wallet provisioning here.
+  // Auth identity creation is successful even if the separate profile step fails.
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: data.user.id, display_name: [firstName, lastName].join(' '), phone_verified: false,
+  }, { onConflict: 'id' });
+  if (profileError) {
+    console.error('admin profile provisioning failed', profileError.code || 'unknown');
+    return respond(207, { ok: false, partial: true, user_id: data.user.id,
+      identity_created: true, profile_created: false, wallets_created: false,
+      error: 'Identity created but profile provisioning failed. Do not retry account creation; reconcile the profile first.' });
+  }
+  return respond(201, {
+    ok: true, user_id: data.user.id, identity_created: true, profile_created: true,
     email_verified: false, phone_verified: false,
     wallets_created: false, otp_sent: false,
     next_step: "Provision wallets using a verified server-side workflow; enroll email and phone OTP at first login",
