@@ -64,7 +64,7 @@ async function enter(s){
    return;
   }
  }
- session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();renderFirstLoginVerificationNotice();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();document.getElementById('yeFirstLoginVerification')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
+ session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();renderFirstLoginVerificationNotice();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();document.getElementById('yeFirstLoginVerification')?.remove();isAdmin=false;adminSelectedUser=null;$('adminNavLink')?.remove();$('yeUltraAdminSubnav')?.remove();session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
 async function loadPrivate(){
  if(!sb||!session)return;
  const id=session.user.id;
@@ -79,17 +79,23 @@ async function loadPrivate(){
 }
 
 async function checkAdmin(){
+ // Fail closed: the admin link is NOT present in customer HTML.
  isAdmin=false;
- const link=$('adminNavLink');
- if(link){link.hidden=true;link.style.display='none'}
+ $('adminNavLink')?.remove();
+ $('yeUltraAdminSubnav')?.remove();
  if(!sb||!session)return false;
- globalThis.YEXAdminNavigationDiagnostic?.('authorization-check','is_youngexchange_admin()');
  const {data,error}=await sb.rpc('is_youngexchange_admin');
- if(error){console.error('Verifica amministratore non riuscita:',error);globalThis.YEXAdminNavigationDiagnostic?.('network-error',error.message);return false}
- isAdmin=data===true;
- if(isAdmin&&link){link.hidden=false;link.style.display='';globalThis.YEXAdminNavigationDiagnostic?.('panel-displayed','Amministrazione autorizzata')}
- else globalThis.YEXAdminNavigationDiagnostic?.('access-denied','is_youngexchange_admin() ha restituito false');
- return isAdmin;
+ if(error){console.error('Impossibile verificare il permesso amministrativo:',error);return false}
+ if(data!==true)return false;
+ isAdmin=true;
+ const nav=$('nav');if(!nav)return false;
+ const link=document.createElement('a');
+ link.id='adminNavLink';link.href='#admin';link.dataset.page='admin';
+ link.innerHTML='<span>⚙</span> Amministrazione';
+ link.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
+ nav.append(link);
+ window.dispatchEvent(new Event('ye:admin-authorized'));
+ return true;
 }
 $('signout').addEventListener('click',async()=>{if(sb)await sb.auth.signOut();exit()});$('menuToggle').addEventListener('click',()=>document.querySelector('.sidebar').classList.toggle('open'));document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>document.querySelector('.sidebar').classList.remove('open')));
 async function fetchQuotes(force=false){if(loading||(!force&&Date.now()-lastFetch<60000))return;loading=true;try{const ids=assets.map(a=>a.id).join(',');const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids='+ids+'&price_change_percentage=24h&sparkline=true',{headers:{accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json();if(!Array.isArray(data)||!data.length)throw Error('Nessuna quotazione');const latest=Object.fromEntries(data.map(x=>[x.id,x]));for(const [id,item] of Object.entries(latest)){const live=quotes[id];const cgPrice=Number(item.current_price);item.yeBaseline24h=cgPrice/(1+Number(item.price_change_percentage_24h||0)/100);if(yeMarketConnected&&live?.yeLiveAt&&Date.now()-live.yeLiveAt<15000)item.current_price=live.current_price;if(live?.yeLiveAt){item.yeLiveAt=live.yeLiveAt;item.current_price=live.current_price}quotes[id]=item}lastFetch=Date.now();if(session){yeMarketDirty=true;yeMarketRefreshUI()}}catch(e){if(!yeMarketConnected)$('marketStatus').textContent=lastFetch?'Dati di mercato in ritardo':'Mercati non disponibili';if(!Object.keys(quotes).length)toast('Quotazioni non disponibili al momento. Riprova tra poco.')}finally{loading=false}}
@@ -447,7 +453,7 @@ adminNavRoot.addEventListener('click',event=>{const target=event.target;if(!(tar
 function requestAdminSection(section){
  globalThis.YEXAdminNavigationDiagnostic?.('click-received',section);
  if(!session){globalThis.YEXAdminNavigationDiagnostic?.('access-denied','sessione assente');return false}
- if(!isAdmin){globalThis.YEXAdminNavigationDiagnostic?.('access-denied','is_youngexchange_admin() non autorizzato');const deniedHash='#admin?section='+encodeURIComponent(section);if(location.hash!==deniedHash){const url=new URL(location.href);url.hash=deniedHash;history.pushState(null,'',url)}route();return true}
+ if(!isAdmin){return false}
  if(!adminSections.includes(section)){globalThis.YEXAdminNavigationDiagnostic?.('panel-not-found',section);return false}
  const hash='#admin?section='+encodeURIComponent(section);
  if(location.hash!==hash){const url=new URL(location.href);url.hash=hash;history.pushState(null,'',url)}
@@ -474,7 +480,7 @@ async function adminInviteUser(event){
  }catch(err){adminErr(err)}finally{button.disabled=false}
 }
 const pages={dashboard:['Panoramica',dashboard],markets:['Mercati',markets],wallet:['Portafoglio',walletPage],activity:['Attività',()=>heading('Attività','Caricamento delle operazioni…')],security:['Sicurezza',security],'profile-settings':['Impostazioni personali',personalSettings],support:['Assistenza',support],admin:['Amministrazione',adminPage]};
-function route(){if(!session)return;const renderGeneration=++routeGeneration;const [page,fragmentQuery='']=location.hash.slice(1).split('?');if(page==='admin'){const section=new URLSearchParams(fragmentQuery).get('section');if(section&&adminSections.includes(section))activeAdminSection=section}const key=pages[page]?page:'dashboard';if(page==='admin'&&!isAdmin)globalThis.YEXAdminNavigationDiagnostic?.('access-denied','pannello amministrativo visualizzato in modalità bloccata');$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='activity')activity(renderGeneration);if(key==='admin')loadAdmin();if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);window.addEventListener('popstate',route);
+function route(){if(!session)return;const renderGeneration=++routeGeneration;const [page,fragmentQuery='']=location.hash.slice(1).split('?');if(page==='admin'){const section=new URLSearchParams(fragmentQuery).get('section');if(section&&adminSections.includes(section))activeAdminSection=section}const key=(page==='admin'&&!isAdmin)?'dashboard':pages[page]?page:'dashboard';if(page==='admin'&&!isAdmin){history.replaceState(null,'',location.pathname+location.search+'#dashboard')}$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='activity')activity(renderGeneration);if(key==='admin')loadAdmin();if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);window.addEventListener('popstate',route);
 function bindPage(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));document.querySelectorAll('[data-trade]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.trade;if(location.hash!=='#markets')location.hash='markets';else route()}));$('personalProfileForm')?.addEventListener('submit',savePersonalProfile);$('personalEmailForm')?.addEventListener('submit',requestPersonalEmailChange);$('refreshMarkets')?.addEventListener('click',()=>fetchQuotes(true));$('yeOpenSupport')?.addEventListener('click',()=>yeOpenSupport());$('yeOpenSupportSecondary')?.addEventListener('click',()=>yeOpenSupport());document.querySelectorAll('[data-support-topic]').forEach(b=>b.addEventListener('click',()=>yeOpenSupport(b.dataset.supportTopic)));$('tradeAsset')?.addEventListener('change',e=>{selected=e.target.value;route()})}
 async function savePersonalProfile(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare il profilo.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalProfileStatus');let payload;try{payload=personalProfilePayload(form.elements.first_name.value,form.elements.last_name.value)}catch(error){if(status)status.textContent=error.message;return}if(button)button.disabled=true;if(status)status.textContent='Salvataggio…';try{const {data:updated,error}=await sb.auth.updateUser({data:{first_name:form.elements.first_name.value.trim(),last_name:form.elements.last_name.value.trim()}});if(error)throw error;if(updated?.user)session={...session,user:updated.user};profile={...(profile||{}),...payload};updateHeaderIdentity();if(status)status.textContent='Nome e cognome aggiornati.';toast('Profilo aggiornato.')}catch(error){if(status)status.textContent='Salvataggio non riuscito: '+error.message}finally{if(button)button.disabled=false}}
 async function requestPersonalEmailChange(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare l’email.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalEmailStatus'),email=form.elements.email.value.trim().toLowerCase();if(!email||email===String(session.user.email||'').toLowerCase()){if(status)status.textContent='Inserisci un indirizzo email diverso da quello attuale.';return}if(button)button.disabled=true;if(status)status.textContent='Invio della richiesta di conferma…';try{const {error}=await sb.auth.updateUser({email},{emailRedirectTo:authRedirectUrl()});if(error)throw error;if(status)status.textContent='Richiesta inviata. Segui il link di conferma inviato da Supabase Auth; l’indirizzo attuale resta valido fino al completamento della verifica.';toast('Richiesta di cambio email inviata: controlla la posta.')}catch(error){if(status)status.textContent='Richiesta non riuscita: '+error.message}finally{if(button)button.disabled=false}}
