@@ -48,7 +48,8 @@ Deno.serve(async (request) => {
     if (lookupError || !target?.user) return respond(404, { ok: false, error: 'Cliente non trovato' });
     if (target.user.id === identity.user.id) return respond(400, { ok: false, error: 'Usa la verifica personale per il tuo numero' });
     const { error: saveError } = await admin.auth.admin.updateUserById(userId, {
-      user_metadata: { ...target.user.user_metadata, phone_pending_verification: phone }
+      user_metadata: { ...target.user.user_metadata, phone_pending_verification: phone },
+      app_metadata: { ...target.user.app_metadata, ye_phone_manual_review: null }
     });
     if (saveError) {
       console.error('admin pending phone update failed', saveError.code || 'unknown');
@@ -56,6 +57,25 @@ Deno.serve(async (request) => {
     }
     return respond(200, { ok: true, user_id: userId, phone_pending_verification: phone,
       phone_verified: false, message: 'Numero salvato. Il cliente deve confermarlo tramite OTP.' });
+  }
+  if (body.action === 'manual_phone_review') {
+    const userId=String(body.user_id||'').trim();
+    const method=String(body.method||'').trim();
+    const reason=String(body.reason||'').trim();
+    if (!/^[0-9a-f-]{36}$/i.test(userId) || !['callback','in_person'].includes(method) || reason.length<12 || reason.length>500)
+      return respond(400,{ok:false,error:'Seleziona cliente, metodo di conferma e motivazione di almeno 12 caratteri'});
+    const admin=createClient(url,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}});
+    const {data:target,error:lookupError}=await admin.auth.admin.getUserById(userId);
+    if(lookupError||!target?.user||userId===identity.user.id)return respond(404,{ok:false,error:'Cliente non disponibile'});
+    const candidate=String(target.user.user_metadata?.phone_pending_verification||'').trim();
+    if(!/^\\+[1-9]\\d{7,14}$/.test(candidate))return respond(409,{ok:false,error:'Prima salva un numero valido da verificare'});
+    const review={phone:candidate,method,reason,reviewed_by:identity.user.id,reviewed_at:new Date().toISOString()};
+    const {error:saveError}=await admin.auth.admin.updateUserById(userId,{
+      app_metadata:{...target.user.app_metadata,ye_phone_manual_review:review}
+    });
+    if(saveError)return respond(503,{ok:false,error:'Conferma amministrativa non registrata'});
+    console.info('Manual phone review registered',userId,identity.user.id,method);
+    return respond(200,{ok:true,phone:candidate,reviewed_at:review.reviewed_at,phone_sms_verified:false});
   }
   if (body.action === 'list') {
     const { data: rows, error: listError } = await caller.rpc('admin_list_users');
@@ -84,6 +104,7 @@ Deno.serve(async (request) => {
         phone_pending_verification: authUsers.get(row.user_id)?.user_metadata?.phone_pending_verification || null,
         phone: authUsers.get(row.user_id)?.phone || null,
         phone_confirmed_at: authUsers.get(row.user_id)?.phone_confirmed_at || null,
+        phone_manual_review: authUsers.get(row.user_id)?.app_metadata?.ye_phone_manual_review || null,
       };
     }));
     return respond(200, { ok: true, page: 1, has_more: false, users });
