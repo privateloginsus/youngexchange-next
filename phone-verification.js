@@ -40,7 +40,7 @@
   }
   client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}});
   signedIn().then(function(user){
-    if(user.phone)$('phoneNumber').value=user.phone;
+    if(user.user_metadata?.phone_pending_verification)$('phoneNumber').value=user.user_metadata.phone_pending_verification;else if(user.phone)$('phoneNumber').value=user.phone;
     if(user.phone_confirmed_at){help.textContent='Il tuo account ha già un numero verificato. Puoi continuare per confermare un nuovo numero.';}
   }).catch(function(err){say(readable(err));start.hidden=true;});
   async function requestSms(number){
