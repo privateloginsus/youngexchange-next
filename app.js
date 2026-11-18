@@ -35,8 +35,49 @@ function adminNavigationDiagnostic(stage,detail=''){
 globalThis.YEXAdminNavigationDiagnostic=adminNavigationDiagnostic;
 for(const b of document.querySelectorAll('[data-mode]'))b.addEventListener('click',()=>authMode(b.dataset.mode));$('forgotLink').addEventListener('click',()=>{location.href='password-recovery.html'});$('togglePassword').addEventListener('click',()=>{$('password').type=$('password').type==='password'?'text':'password'});
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();if(!sb){toast('Backend pubblico non configurato; accesso disabilitato.');return}const email=$('email').value.trim(),password=$('password').value;const b=$('authSubmit');b.disabled=true;try{let result;if(mode==='recovery'){result=await sb.auth.updateUser({password});if(!result.error){toast('Password aggiornata. Accedi con la nuova password.');await sb.auth.signOut();exit()}}else if(mode==='register'){result=await sb.auth.signUp({email,password,options:{emailRedirectTo:authRedirectUrl(),data:{display_name:$('displayName').value.trim().slice(0,80)}}});if(!result.error)toast('Registrazione inviata. Controlla la tua email e conferma l’account.')}else if(mode==='forgot'){result=await sb.auth.resetPasswordForEmail(email,{redirectTo:recoveryRedirectUrl()});if(!result.error)toast('Se l’indirizzo è registrato, riceverai un link di recupero.')}else{result=await sb.auth.signInWithPassword({email,password});if(!result.error&&result.data.session)await enter(result.data.session)}if(result?.error)throw result.error}catch(err){toast(authErrorMessage(err))}finally{b.disabled=false}});
-async function enter(s){session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
-async function loadPrivate(){if(!sb||!session)return;const id=session.user.id;const {error:provisionError}=await sb.rpc('ye_ensure_my_wallets');if(provisionError){console.error('Provisioning profilo/wallet non riuscito:',provisionError);toast('Profilo e wallet non disponibili: '+provisionError.message);profile=null;wallets=[];return}const [p,w]=await Promise.all([sb.from('profiles').select('id,display_name,first_name,last_name,phone_verified,created_at').eq('id',id).maybeSingle(),sb.from('wallets').select('id,currency,balance,locked_balance').eq('user_id',id)]);if(p.error)toast('Profilo non disponibile: '+p.error.message);if(w.error)toast('Wallet non disponibili: '+w.error.message);profile=p.data||null;wallets=w.data||[]}
+function renderFirstLoginVerificationNotice(){
+ const old=document.getElementById('yeFirstLoginVerification');old?.remove();
+ if(isAdmin||!session?.user||!session.user.app_metadata?.ye_admin_provisioned)return;
+ if(session.user.email_confirmed_at&&session.user.phone_confirmed_at)return;
+ const notice=document.createElement('section');
+ notice.id='yeFirstLoginVerification';notice.setAttribute('role','status');
+ notice.style.cssText='margin:14px 20px;padding:16px;border:1px solid #35e9a6;border-radius:12px;background:#08291e;color:#e4fff0';
+ const heading=document.createElement('strong');heading.textContent='Completa la verifica del tuo conto';
+ const description=document.createElement('p');
+ description.textContent='Email: '+(session.user.email_confirmed_at?'confermata':'da confermare')+' · Telefono: '+(session.user.phone_confirmed_at?'confermato':'da verificare')+'. La creazione amministrativa del conto non sostituisce la verifica dei recapiti.';
+ notice.append(heading,description);
+ if(!session.user.phone_confirmed_at){
+  const button=document.createElement('button');button.type='button';button.className='secondary-btn';button.textContent='Verifica il numero con codice SMS';button.addEventListener('click',()=>phoneVerification());notice.append(button);
+ }
+ const host=document.getElementById('pageContent');host?.parentElement?.insertBefore(notice,host);
+}
+async function enter(s){
+ if(s?.user?.user_metadata?.ye_admin_provisioned===true){
+  const [profileCheck,walletCheck]=await Promise.all([
+   sb.from('profiles').select('id').eq('id',s.user.id).maybeSingle(),
+   sb.from('wallets').select('currency').eq('user_id',s.user.id).in('currency',['EUR','USDT','BTC','ETH'])
+  ]);
+  const currencies=new Set((walletCheck.data||[]).map(wallet=>wallet.currency));
+  if(profileCheck.error||!profileCheck.data||walletCheck.error||!['EUR','USDT','BTC','ETH'].every(currency=>currencies.has(currency))){
+   await sb.auth.signOut();session=null;
+   toast('Attivazione in attesa: il profilo o i portafogli non sono ancora completi. Contatta l’assistenza; non creare un secondo account.');
+   return;
+  }
+ }
+ session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;ensurePersonalProfileNavigation();if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}await loadPrivate();updateHeaderIdentity();await checkAdmin();route();renderFirstLoginVerificationNotice();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();document.getElementById('yeFirstLoginVerification')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
+async function loadPrivate(){
+ if(!sb||!session)return;
+ const id=session.user.id;
+ // Production does not have ye_ensure_my_wallets. Never create wallets in a customer session.
+ const [p,w]=await Promise.all([
+  sb.from('profiles').select('id,display_name,phone_verified,created_at').eq('id',id).maybeSingle(),
+  sb.from('wallets').select('id,currency,balance,locked_balance').eq('user_id',id)
+ ]);
+ if(p.error)toast('Profilo non disponibile: '+p.error.message);
+ if(w.error)toast('Wallet non disponibili: '+w.error.message);
+ profile=p.data||null;wallets=w.data||[];
+}
+
 async function checkAdmin(){
  isAdmin=false;
  const link=$('adminNavLink');
@@ -325,9 +366,33 @@ async function adminSelectSection(section){
  const view=(title,body)=>{if(activeAdminSection===section&&workspace.isConnected){workspace.innerHTML='<section class="card"><h3>'+esc(title)+'</h3>'+body+'</section>';globalThis.YEXAdminNavigationDiagnostic?.('panel-displayed',title)}};
  try{
  if(section==='users'){
-  const users=await adminRpc('ye_admin_customer_accounts');
-  view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Predisponi il conto prima del primo accesso. La verifica email e telefono è distinta dalla creazione: nessun recapito viene considerato verificato senza conferma. Il servizio attuale invia già un invito email alla creazione; il rinvio dell’OTP al primo accesso richiede un aggiornamento backend separato.</p><form id="adminInviteForm"><label>Nome</label><input name="first_name" maxlength="80" required><label>Cognome</label><input name="last_name" maxlength="80" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account e invia invito email</button></form></div><div class="divider"></div>`+'<p class="small">Utenti registrati: '+users.length+'</p>'+adminTools(users,'utenti')+'<div data-admin-results="utenti">'+adminTable(users,[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Stato conto',u=>adminCell(u.email_confirmed_at?'Email confermata':'In attesa di verifica')],['Stato email',u=>adminCell(u.email_confirmed_at?'Verificata':'In attesa')],['Wallet',u=>adminCell(u.wallet_count)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'</div><label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
+  // Read customers via the JWT-protected Edge Function, not direct auth.users access.
+  const {data:auth,error:sessionError}=await sb.auth.getSession();
+  if(sessionError||!auth?.session?.access_token)throw new Error('Sessione amministrativa scaduta.');
+  const {data:listData,error:listError}=await sb.functions.invoke('admin-invite-user',{
+   body:{action:'list',page:1},headers:{Authorization:'Bearer '+auth.session.access_token}
+  });
+  if(listError||!listData?.ok)throw new Error(listData?.error||listError?.message||'Elenco clienti non disponibile');
+  const users=listData.users||[];
+  const customerListHasMore=!!listData.has_more;
+  view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Predisponi il conto prima del primo accesso. La verifica email e telefono è distinta dalla creazione: nessun recapito viene considerato verificato senza conferma. Il sistema invia un invito email per impostare la password. La conferma telefonica tramite SMS avviene dopo l’accesso, se il provider SMS è configurato.</p><form id="adminInviteForm"><label>Nome</label><input name="first_name" maxlength="80" required><label>Cognome</label><input name="last_name" maxlength="80" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account non verificato</button></form></div><div class="divider"></div>`+'<p class="small">Clienti visualizzati: '+users.length+(customerListHasMore?' (prima pagina di 100; altri clienti presenti)':'')+'</p>'+adminTools(users,'utenti')+'<div data-admin-results="utenti">'+adminTable(users,[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Stato conto',u=>adminCell(u.email_confirmed_at?'Email confermata':'In attesa di verifica')],['Stato email',u=>adminCell(u.email_confirmed_at?'Verificata':'In attesa')],['Wallet',u=>adminCell(u.wallet_count)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'</div><label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
   adminBindTools(workspace,users,'utenti',[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Stato conto',u=>adminCell(u.email_confirmed_at?'Email confermata':'In attesa di verifica')],['Stato email',u=>adminCell(u.email_confirmed_at?'Verificata':'In attesa')],['Wallet',u=>adminCell(u.wallet_count)],['Registrazione',u=>adminCell(adminDate(u.created_at))]]);const inviteForm=workspace.querySelector('#adminInviteForm');if(inviteForm)inviteForm.onsubmit=adminInviteUser;
+  workspace.innerHTML+='<section class="mt" id="adminRepairPanel"><h3>Ripristina conto incompleto</h3><p class="small">Solo account creati dall’amministratore. Ricrea esclusivamente profilo e wallet mancanti; non modifica saldi esistenti né invia un nuovo invito.</p><label for="adminRepairUser">Account</label><select id="adminRepairUser"><option value="">— Seleziona un account —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><button type="button" class="secondary-btn" id="adminRepairButton">Ripristina conto</button><p id="adminRepairResult" role="status" class="small mt"></p></section>';
+  const repairButton=workspace.querySelector('#adminRepairButton');
+  if(repairButton)repairButton.onclick=async()=>{
+   const userId=workspace.querySelector('#adminRepairUser')?.value;
+   const result=workspace.querySelector('#adminRepairResult');
+   if(!userId){result.textContent='Seleziona un account.';return}
+   if(!confirm('Ripristinare solo profilo e wallet mancanti per questo account? Nessun saldo esistente sarà modificato.'))return;
+   repairButton.disabled=true;result.textContent='Controllo e ripristino in corso…';
+   try{
+    const {data:auth,error:sessionError}=await sb.auth.getSession();
+    if(sessionError||!auth?.session?.access_token)throw new Error('Sessione amministrativa scaduta.');
+    const {data,error}=await sb.functions.invoke('admin-invite-user',{body:{action:'repair',user_id:userId},headers:{Authorization:'Bearer '+auth.session.access_token}});
+    if(error||!data?.ok)throw new Error(data?.error||error?.message||'Ripristino non confermato');
+    result.textContent='Ripristino completato: profilo e wallet verificati. Nessun saldo esistente modificato.';
+   }catch(error){result.textContent='Ripristino non riuscito: '+(error.message||String(error))}finally{repairButton.disabled=false}
+  };
   workspace.innerHTML+='<section class="mt" id="adminVerificationPanel"><h3>Verifica amministrativa del conto</h3><p class="small">Separata dalla conferma email: non modifica Auth, MFA, wallet, saldi o ledger. Richiede una motivazione e resta soggetta alle policy amministrative.</p><label for="adminVerificationUser">Account</label><select id="adminVerificationUser"><option value="">— Seleziona un account —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><label for="adminVerificationReason">Motivazione</label><textarea id="adminVerificationReason" minlength="8" maxlength="500" required></textarea><div class="button-row"><button type="button" class="primary" data-admin-verification="verified">Verifica conto</button><button type="button" class="danger" data-admin-verification="revoked">Revoca verifica</button></div><div id="adminVerificationResult" class="small mt"></div></section>';const verificationPanel=workspace.querySelector('#adminVerificationPanel');
   if(verificationPanel?.querySelectorAll)verificationPanel.querySelectorAll('[data-admin-verification]').forEach(button=>button.onclick=async()=>{const userId=verificationPanel.querySelector('#adminVerificationUser').value;const reason=verificationPanel.querySelector('#adminVerificationReason').value.trim();const result=verificationPanel.querySelector('#adminVerificationResult');if(!userId||reason.length<8){result.textContent='Seleziona un account e inserisci una motivazione di almeno 8 caratteri.';return}result.textContent='Salvataggio in corso...';try{await adminRpc('ye_admin_set_account_verification',{p_user_id:userId,p_status:button.dataset.adminVerification,p_reason:reason});result.textContent='Decisione registrata nell’audit log.';await adminSelectSection('users')}catch(error){result.textContent='Verifica non disponibile: '+(error.message||'funzione amministrativa non installata')}});const sel=workspace.querySelector('#adminUser');if(sel){sel.onchange=e=>{adminSelectedUser=e.target.value||null;loadAdminUser()};if(adminSelectedUser)loadAdminUser()}
   return;
@@ -403,8 +468,9 @@ async function adminInviteUser(event){
  try{
   const {data:auth,error:sessionError}=await sb.auth.getSession();if(sessionError||!auth?.session?.access_token)throw new Error('Sessione scaduta: accedi di nuovo.');
   const {data,error}=await sb.functions.invoke('admin-invite-user',{body:{email,first_name:firstName,last_name:lastName,phone:phone||null},headers:{Authorization:'Bearer '+auth.session.access_token}});
+  if(data?.partial&&data?.identity_created){toast('Conto creato parzialmente: NON ripetere la creazione. Contatta il supporto tecnico per completare profilo o portafogli.');return}
   if(error)throw error;if(!data?.ok)throw new Error(data?.error||'Creazione non confermata');
-  toast('Richiesta di creazione account confermata dal server. Controlla lo stato del profilo e dei wallet nella lista: l’OTP al primo accesso non è ancora attivo.');await adminSelectSection('users');
+  toast('Invito email richiesto a Supabase; conto e wallet iniziali a zero. Il cliente deve aprire il link e impostare la password. Telefono non verificato.');await adminSelectSection('users');
  }catch(err){adminErr(err)}finally{button.disabled=false}
 }
 const pages={dashboard:['Panoramica',dashboard],markets:['Mercati',markets],wallet:['Portafoglio',walletPage],activity:['Attività',()=>heading('Attività','Caricamento delle operazioni…')],security:['Sicurezza',security],'profile-settings':['Impostazioni personali',personalSettings],support:['Assistenza',support],admin:['Amministrazione',adminPage]};
@@ -495,9 +561,9 @@ async function phoneVerification(){
   const close=()=>overlay.remove();overlay.querySelector('.modal-close').onclick=close;overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
   const start=overlay.querySelector('#phoneStartForm'),otp=overlay.querySelector('#phoneOtpForm'),err=overlay.querySelector('#phoneError'),help=overlay.querySelector('#phoneHelp');
   const errorText=e=>{err.textContent=phoneVerificationUnavailable(e)?'Verifica telefonica non disponibile: il provider SMS Supabase non è attivo o configurato. Contatta l’assistenza.' :e?.message||'Operazione non riuscita. Riprova.'};
-  overlay.querySelector('#phoneNumber').value=session.user.phone||'';
+  overlay.querySelector('#phoneNumber').value=session.user.phone||session.user.user_metadata?.phone_pending_verification||'';
   start.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');if(!/^\+[1-9]\d{7,14}$/.test(phone)){err.textContent='Usa il formato internazionale, ad esempio +39 seguito dal numero.';return}const btn=start.querySelector('button[type=submit]');btn.disabled=true;try{const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session){throw new Error('Sessione Supabase scaduta o assente. Esci dal conto, accedi nuovamente e riprova.')}session=authData.session;const {error}=await sb.auth.updateUser({phone});if(error)throw error;start.hidden=true;otp.hidden=false;help.textContent='Inserisci il codice SMS ricevuto per confermare il numero '+phone.replace(/.(?=.{3})/g,'•')+'.';overlay.querySelector('#phoneOtp').focus()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
-  otp.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const token=overlay.querySelector('#phoneOtp').value.trim();if(!/^\d{6}$/.test(token)){err.textContent='Inserisci il codice di 6 cifre.';return}const btn=otp.querySelector('button[type=submit]');btn.disabled=true;try{const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session)throw new Error('Sessione scaduta. Accedi nuovamente.');const {error}=await sb.auth.verifyOtp({phone,token,type:'phone_change'});if(error)throw error;const {data:{user},error:userError}=await sb.auth.getUser();if(userError)throw userError;if(session&&user)session={...session,user};close();toast('Numero di telefono verificato correttamente.');route()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
+  otp.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const token=overlay.querySelector('#phoneOtp').value.trim();if(!/^\d{6}$/.test(token)){err.textContent='Inserisci il codice di 6 cifre.';return}const btn=otp.querySelector('button[type=submit]');btn.disabled=true;try{const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session)throw new Error('Sessione scaduta. Accedi nuovamente.');const {error}=await sb.auth.verifyOtp({phone,token,type:'phone_change'});if(error)throw error;const {data:{user},error:userError}=await sb.auth.getUser();if(userError)throw userError;if(session&&user)session={...session,user};close();toast('Numero di telefono verificato correttamente.');route();renderFirstLoginVerificationNotice()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
   overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
 }
 async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:authRedirectUrl()});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
