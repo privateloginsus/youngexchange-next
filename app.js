@@ -52,6 +52,8 @@ function renderFirstLoginVerificationNotice(){
  const host=document.getElementById('pageContent');host?.parentElement?.insertBefore(notice,host);
 }
 async function enter(s){
+ // Reset any previous account state before opening a different session.
+ if(session?.user?.id && session.user.id!==s?.user?.id){adminSelectedUser=null;wallets=[];profile=null;}
  // Private admin navigation never persists across a user/session switch.
  isAdmin=false;
  $('adminNavLink')?.remove();
@@ -374,7 +376,7 @@ setInterval(async()=>{
   else if(page==='dashboard'){
    document.querySelectorAll('[data-ye-total]').forEach(node=>node.textContent=portfolioTotalText());
    const kpis=document.querySelectorAll('.pl-kpi-value');
-   if(kpis[0])kpis[0].textContent=portfolioTotalText();
+   // data-ye-total was updated above; preserve its span for live market refresh.
    if(kpis[1])kpis[1].textContent=eur(balance('EUR'));
    document.querySelectorAll('.pl-wallet-list strong').forEach((node,index)=>{
     const currency=['EUR','USDT','BTC','ETH'][index];
@@ -863,5 +865,5 @@ function drawSparkFallback(id,assetId){
  requestAnimationFrame(render);
 }
 
-async function init(){if(!sb){$('authNote').textContent='Backend pubblico non configurato; accesso e operazioni finanziarie disabilitati.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){const target=new URL('reimposta-password.html',location.href);target.search=location.search;target.hash=location.hash;location.replace(target.toString());return}if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT')exit();else if(event==='SIGNED_IN'&&newSession&&!session)setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
+async function init(){if(!sb){$('authNote').textContent='Backend pubblico non configurato; accesso e operazioni finanziarie disabilitati.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){const target=new URL('reimposta-password.html',location.href);target.search=location.search;target.hash=location.hash;location.replace(target.toString());return}if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT')exit();else if(event==='SIGNED_IN'&&newSession&&(!session||session.user.id!==newSession.user.id))setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
 })();
