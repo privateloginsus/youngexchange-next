@@ -52,7 +52,7 @@ Deno.serve(async (request) => {
   const { data, error } = await admin.auth.admin.createUser({
     email,
     email_confirm: false,
-    user_metadata: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null },
+    user_metadata: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null, ye_admin_provisioned: true },
   });
   if (error) {
     // Avoid exposing Auth internals or account existence to the caller.
