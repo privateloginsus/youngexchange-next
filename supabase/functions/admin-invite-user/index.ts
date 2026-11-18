@@ -39,9 +39,9 @@ Deno.serve(async (request) => {
   // Save an administrator-proposed contact without confirming possession of that number.
   if (body.action === 'set_pending_phone') {
     const userId = String(body.user_id || '').trim();
-    const phone = String(body.phone || '').replace(/[\\s()-]/g, '');
+    const phone = String(body.phone || '').replace(/[\s()-]/g, '');
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId) ||
-        !/^\\+[1-9]\\d{7,14}$/.test(phone))
+        !/^\+[1-9]\d{7,14}$/.test(phone))
       return respond(400, { ok: false, error: 'Identificativo o numero non valido' });
     const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: target, error: lookupError } = await admin.auth.admin.getUserById(userId);
