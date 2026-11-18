@@ -43,7 +43,7 @@ Deno.serve(async (request) => {
       return respond(400, { ok: false, error: 'Valid user_id required' });
     const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: account, error: lookupError } = await admin.auth.admin.getUserById(userId);
-    if (lookupError || !account?.user || account.user.user_metadata?.ye_admin_provisioned !== true)
+    if (lookupError || !account?.user || account.user.app_metadata?.ye_admin_provisioned !== true)
       return respond(404, { ok: false, error: 'Admin-provisioned account not found' });
     const { data: existingProfile, error: profileLookupError } = await admin.from('profiles').select('id').eq('id',userId).maybeSingle();
     if (profileLookupError) return respond(500, { ok: false, error: 'Profile lookup failed; no changes made' });
@@ -80,12 +80,22 @@ Deno.serve(async (request) => {
   const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: 'https://youngexchange.eu/reimposta-password.html',
-    data: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null, ye_admin_provisioned: true },
+    data: { first_name: firstName, last_name: lastName, phone_pending_verification: phone || null },
   });
   if (error) {
     // Avoid exposing Auth internals or account existence to the caller.
     console.error("admin account creation failed", error.code || error.status || "unknown");
     return respond(409, { ok: false, error: "Account could not be created; check for duplicates and server configuration" });
+  }
+  // Security-critical provisioning flag belongs in server-controlled app_metadata.
+  // user_metadata is editable by the customer and must never authorize repair.
+  const { error: markError } = await admin.auth.admin.updateUserById(data.user.id, {
+    app_metadata: { ...(data.user.app_metadata || {}), ye_admin_provisioned: true },
+  });
+  if (markError) {
+    console.error('admin provisioning marker failed', markError.code || 'unknown');
+    return respond(207, { ok: false, partial: true, identity_created: true, user_id: data.user.id,
+      invitation_requested: true, error: 'Account invited but secure provisioning marker failed; manual review required' });
   }
   // The Production profiles table has id, display_name, phone_verified, created_at.
   // Wallets have UNIQUE(user_id,currency) and nonnegative balance constraints.
