@@ -86,8 +86,12 @@ Deno.serve(async (request) => {
     const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: target, error: lookupError } = await admin.auth.admin.getUserById(userId);
     if (lookupError || !target?.user) return respond(404, { ok: false, error: 'Cliente non trovato' });
-    if (target.user.app_metadata?.ye_admin_provisioned === true)
-      return respond(403, { ok: false, error: 'Non è consentito disabilitare account amministrativi' });
+    // ye_admin_provisioned marks customers created by an admin, not actual admins.
+    // Protect ONLY accounts present in the authoritative admin_users table.
+    const { data: adminMember, error: adminLookupError } = await admin.from('admin_users')
+      .select('user_id').eq('user_id',userId).maybeSingle();
+    if (adminLookupError) return respond(503, { ok: false, error: 'Impossibile verificare i privilegi del conto' });
+    if (adminMember) return respond(403, { ok: false, error: 'Gli account amministrativi non possono essere disabilitati' });
     const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(userId, {
       ban_duration: disabled ? '876000h' : 'none',
       app_metadata: { ...target.user.app_metadata, ye_account_disabled: disabled,
