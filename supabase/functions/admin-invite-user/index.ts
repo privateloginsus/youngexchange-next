@@ -77,6 +77,30 @@ Deno.serve(async (request) => {
     console.info('Manual phone review registered',userId,identity.user.id,method);
     return respond(200,{ok:true,phone:candidate,reviewed_at:review.reviewed_at,phone_sms_verified:false});
   }
+  if (body.action === 'set_account_access') {
+    const userId = String(body.user_id || '').trim();
+    const disabled = body.disabled === true;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId) || typeof body.disabled !== 'boolean')
+      return respond(400, { ok: false, error: 'Cliente o scelta non valida' });
+    if (identity.user.id === userId) return respond(403, { ok: false, error: 'Non puoi disabilitare il tuo account amministratore' });
+    const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: target, error: lookupError } = await admin.auth.admin.getUserById(userId);
+    if (lookupError || !target?.user) return respond(404, { ok: false, error: 'Cliente non trovato' });
+    if (target.user.app_metadata?.ye_admin_provisioned === true)
+      return respond(403, { ok: false, error: 'Non è consentito disabilitare account amministrativi' });
+    const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: disabled ? '876000h' : 'none',
+      app_metadata: { ...target.user.app_metadata, ye_account_disabled: disabled,
+        ye_access_changed_at: new Date().toISOString(), ye_access_changed_by: identity.user.id }
+    });
+    if (updateError || !updated?.user) {
+      console.error('admin access change failed', updateError?.code || 'unknown');
+      return respond(503, { ok: false, error: 'Impossibile aggiornare l’accesso del conto' });
+    }
+    console.info('Account access changed by admin', { userId, disabled, actor: identity.user.id });
+    return respond(200, { ok: true, user_id: userId, disabled,
+      message: disabled ? 'Conto disabilitato' : 'Conto riattivato' });
+  }
   if (body.action === 'list') {
     const { data: rows, error: listError } = await caller.rpc('admin_list_users');
     if (listError || !Array.isArray(rows)) {
@@ -105,6 +129,7 @@ Deno.serve(async (request) => {
         phone: authUsers.get(row.user_id)?.phone || null,
         phone_confirmed_at: authUsers.get(row.user_id)?.phone_confirmed_at || null,
         phone_manual_review: authUsers.get(row.user_id)?.app_metadata?.ye_phone_manual_review || null,
+        account_disabled: authUsers.get(row.user_id)?.app_metadata?.ye_account_disabled === true || (authUsers.get(row.user_id)?.banned_until && new Date(authUsers.get(row.user_id).banned_until).getTime()>Date.now()) || false,
       };
     }));
     return respond(200, { ok: true, page: 1, has_more: false, users });
