@@ -787,7 +787,31 @@ function showEurAvailability(type){
  });
  button.focus();
 }
+function openSwapEstimate(){
+ const overlay=document.createElement('div');overlay.className='modal-overlay';
+ overlay.innerHTML='<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Anteprima conversione interna"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / CONVERSIONE</div><h3>Conversione crypto → euro</h3><p>Anteprima indicativa del controvalore interno. La conversione automatica non è ancora abilitata: nessun saldo verrà modificato o accreditato.</p><form id="yeSwapEstimate"><label>Da quale valuta<select name="source"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option><option value="USDT">Tether (USDT)</option></select></label><label>Verso quale valuta<select name="target"><option value="EUR">Euro (EUR)</option></select></label><label>Quantità da convertire<input name="amount" type="number" min="0" step="any" placeholder="0,00" required></label><div class="notice" role="status" id="yeSwapEstimateStatus">Inserisci la quantità per consultare il controvalore indicativo.</div><button type="button" class="secondary-btn" id="yeSwapRefresh">Aggiorna quotazione</button><button type="button" class="primary full mt" disabled aria-disabled="true">Procedi — non disponibile</button><p class="small">Non costituisce un ordine eseguito né un accredito di euro disponibili al prelievo. Per abilitare conversioni effettive occorrono un motore contabile verificato e disponibilità di fondi sottostanti.</p></form></div>';
+ document.body.append(overlay);
+ overlay.querySelector('.modal-close').onclick=()=>overlay.remove();
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+ const form=overlay.querySelector('#yeSwapEstimate');
+ const status=overlay.querySelector('#yeSwapEstimateStatus');
+ const refresh=async()=>{status.textContent='Aggiornamento quotazioni in corso…';await fetchQuotes(true);render()};
+ const render=()=>{
+  const source=String(form.elements.source.value),amount=Number(form.elements.amount.value),item=assets.find(a=>a.symbol===source);
+  const live=q(item||{id:'none'}),rate=Number(live?.current_price),available=Math.max(0,balance(source)-Number(wallet(source)?.locked_balance||0));
+  if(!(amount>0)||!Number.isFinite(amount)){status.textContent='Inserisci una quantità maggiore di zero.';return}
+  if(amount>available){status.textContent='Quantità superiore al saldo interno disponibile ('+fmt(available,8)+' '+source+').';return}
+  if(!(rate>0)||!Number.isFinite(rate)){status.textContent='Quotazione non disponibile; non è possibile calcolare il controvalore.';return}
+  status.textContent='Disponibile: '+fmt(available,8)+' '+source+' · Tasso indicativo: '+eur(rate)+' / '+source+' · Controvalore stimato: '+eur(amount*rate)+' · Nessuna conversione eseguita.';
+ };
+ form.addEventListener('input',render);
+ form.addEventListener('change',render);
+ const refreshButton=overlay.querySelector('#yeSwapRefresh');
+ refreshButton.onclick=refresh;
+ render();
+}
 function action(type){
+ if(type==='swap'&&cfg.financialOperationsEnabled!==true){openSwapEstimate();return}
  if((type==='deposit'||type==='withdraw')&&cfg.financialOperationsEnabled!==true){showEurAvailability(type);return}
  if(['deposit','withdraw','transfer','swap','buy','sell'].includes(type)&&cfg.financialOperationsEnabled!==true){toast('Operazioni finanziarie disabilitate finché il backend contabile non è verificato.');return}
  if(type==='password'){passwordReset();return}
