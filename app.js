@@ -787,28 +787,63 @@ function showEurAvailability(type){
  });
  button.focus();
 }
-function openSwapEstimate(){
+if(!document.getElementById('ye-conversion-spinner-style')){const style=document.createElement('style');style.id='ye-conversion-spinner-style';style.textContent='.ye-conversion-spinner{display:inline-block;width:17px;height:17px;border:2px solid #2ddc9b;border-top-color:transparent;border-radius:50%;vertical-align:middle;animation:ye-conversion-spin .65s linear infinite}@keyframes ye-conversion-spin{to{transform:rotate(360deg)}}';document.head.appendChild(style)}
+async function openSwapEstimate(){
  const overlay=document.createElement('div');overlay.className='modal-overlay';
- overlay.innerHTML='<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Anteprima conversione interna"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / CONVERSIONE</div><h3>Conversione crypto → euro</h3><p>Anteprima indicativa del controvalore interno. La conversione automatica non è ancora abilitata: nessun saldo verrà modificato o accreditato.</p><form id="yeSwapEstimate"><label>Da quale valuta<select name="source"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option><option value="USDT">Tether (USDT)</option></select></label><label>Verso quale valuta<select name="target"><option value="EUR">Euro (EUR)</option></select></label><label>Quantità da convertire<input name="amount" type="number" min="0" step="any" placeholder="0,00" required></label><div class="notice" role="status" id="yeSwapEstimateStatus">Inserisci la quantità per consultare il controvalore indicativo.</div><button type="button" class="secondary-btn" id="yeSwapRefresh">Aggiorna quotazione</button><button type="button" class="primary full mt" disabled aria-disabled="true">Procedi — non disponibile</button><p class="small">Non costituisce un ordine eseguito né un accredito di euro disponibili al prelievo. Per abilitare conversioni effettive occorrono un motore contabile verificato e disponibilità di fondi sottostanti.</p></form></div>';
- document.body.append(overlay);
- overlay.querySelector('.modal-close').onclick=()=>overlay.remove();
+ overlay.innerHTML='<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Riallocazione contabile interna"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / VALORI INTERNI</div><h3>Conversione contabile interna</h3><p>Rialloca importi già assegnati nel portafoglio interno. Questi valori non rappresentano crypto realmente scambiate, euro incassati o fondi prelevabili.</p><form id="yeSwapEstimate"><label>Da quale valuta<select name="source"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option><option value="USDT">Tether (USDT)</option></select></label><label>Verso quale valuta<select name="target"><option value="EUR">Euro interno (EUR)</option></select></label><label>Quantità da riallocare<input name="amount" type="number" min="0" step="any" placeholder="0,00" required></label><div class="notice" role="status" id="yeSwapEstimateStatus">Caricamento valori interni…</div><label><input name="accept" type="checkbox" required> Confermo che si tratta di una registrazione contabile interna, non di denaro convertito o prelevabile.</label><button type="button" class="secondary-btn" id="yeSwapRefresh">Aggiorna quotazione</button><button type="submit" class="primary full mt" id="yeSwapProceed" disabled>Procedi</button><div class="notice" id="yeSwapResult" role="status" aria-live="polite"></div><div id="yeSwapHistory" class="small"></div></form></div>';
+ document.body.append(overlay);overlay.querySelector('.modal-close').onclick=()=>overlay.remove();
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
- const form=overlay.querySelector('#yeSwapEstimate');
- const status=overlay.querySelector('#yeSwapEstimateStatus');
- const refresh=async()=>{status.textContent='Aggiornamento quotazioni in corso…';await fetchQuotes(true);render()};
- const render=()=>{
-  const source=String(form.elements.source.value),amount=Number(form.elements.amount.value),item=assets.find(a=>a.symbol===source);
-  const live=q(item||{id:'none'}),rate=Number(live?.current_price),available=Math.max(0,balance(source)-Number(wallet(source)?.locked_balance||0));
-  if(!(amount>0)||!Number.isFinite(amount)){status.textContent='Inserisci una quantità maggiore di zero.';return}
-  if(amount>available){status.textContent='Quantità superiore al saldo interno disponibile ('+fmt(available,8)+' '+source+').';return}
-  if(!(rate>0)||!Number.isFinite(rate)){status.textContent='Quotazione non disponibile; non è possibile calcolare il controvalore.';return}
-  status.textContent='Disponibile: '+fmt(available,8)+' '+source+' · Tasso indicativo: '+eur(rate)+' / '+source+' · Controvalore stimato: '+eur(amount*rate)+' · Nessuna conversione eseguita.';
+ const form=overlay.querySelector('#yeSwapEstimate'),status=overlay.querySelector('#yeSwapEstimateStatus'),result=overlay.querySelector('#yeSwapResult'),history=overlay.querySelector('#yeSwapHistory'),proceed=overlay.querySelector('#yeSwapProceed');
+ let quote=null,balances=null,locked=null,busy=false,requestKey=crypto.randomUUID();
+ const fetchInternal=async(action,payload={})=>{
+  const {data:auth,error:authError}=await sb.auth.getSession();
+  if(authError||!auth?.session?.access_token)throw new Error('Sessione non valida, accedi nuovamente.');
+  const {data,error}=await sb.functions.invoke('internal-conversion',{body:{action,...payload},headers:{Authorization:'Bearer '+auth.session.access_token}});
+  if(error||!data?.ok){
+   let reason=data?.error||'';
+   if(error?.context&&!reason){try{const details=await error.context.json();reason=details?.error||details?.message||''}catch(_ignored){}}
+   throw new Error(reason||error?.message||'Servizio temporaneamente non disponibile.');
+  }
+  return data;
  };
- form.addEventListener('input',render);
- form.addEventListener('change',render);
- const refreshButton=overlay.querySelector('#yeSwapRefresh');
- refreshButton.onclick=refresh;
- render();
+ const showHistory=entries=>{
+  const recent=(entries||[]).slice(0,5);
+  history.innerHTML='<h4>Ultime riallocazioni contabili</h4>'+(recent.length?recent.map(e=>'<p>'+esc(new Date(e.created_at).toLocaleString('it-IT'))+' · '+fmt(e.source_amount,8)+' '+esc(e.source_currency)+' → '+eur(e.target_amount)+' interni</p>').join(''):'<p>Nessuna riallocazione registrata.</p>');
+ };
+ const render=()=>{
+  const source=form.elements.source.value,amount=Number(form.elements.amount.value),rate=Number(quote?.rate),available=Number(balances?.[source]||0)-Number(locked?.[source]||0);
+  const valid=!!quote&&quote.source===source&&Number.isFinite(amount)&&amount>0&&amount<=available&&Number.isFinite(rate)&&rate>0;
+  proceed.disabled=busy||!valid||!form.elements.accept.checked;
+  if(busy)return;
+  if(!quote){status.textContent='Quotazione non disponibile. Premi Aggiorna quotazione.';return}
+  if(!Number.isFinite(amount)||amount<=0){status.textContent='Disponibile: '+fmt(available,8)+' '+source+'. Inserisci una quantità positiva.';return}
+  if(amount>available){status.textContent='Disponibile: '+fmt(available,8)+' '+source+'. Quantità superiore al saldo interno.';return}
+  status.textContent='Disponibile: '+fmt(available,8)+' '+source+' · Tasso indicativo: '+eur(rate)+'/'+source+' · Risultato stimato: '+eur(amount*rate)+' interni. Il tasso definitivo verrà controllato alla conferma.';
+ };
+ const refresh=async()=>{
+  quote=null;busy=true;proceed.disabled=true;status.textContent='Aggiornamento quotazione…';
+  try{const data=await fetchInternal('quote',{source:form.elements.source.value});quote={rate:data.rate,source:data.source};balances=data.balances;locked=data.locked;showHistory(data.entries)}
+  catch(e){result.textContent='Impossibile caricare la quotazione: '+(e.message||String(e))}
+  finally{busy=false;render()}
+ };
+ form.elements.source.addEventListener('change',()=>{requestKey=crypto.randomUUID();form.elements.accept.checked=false;result.textContent='';refresh()});
+ form.elements.amount.addEventListener('input',()=>{requestKey=crypto.randomUUID();render()});
+ form.elements.accept.addEventListener('change',render);
+ overlay.querySelector('#yeSwapRefresh').onclick=refresh;
+ form.onsubmit=async e=>{
+  e.preventDefault();if(busy||!quote||proceed.disabled)return;
+  busy=true;proceed.disabled=true;status.innerHTML='<span class="ye-conversion-spinner" aria-hidden="true"></span> Registrazione contabile in corso…';
+  try{
+   const data=await fetchInternal('convert',{source:form.elements.source.value,amount:Number(form.elements.amount.value),expected_rate:Number(quote.rate),idempotency_key:requestKey});
+   balances=data.balances;result.textContent='✓ Riallocazione contabile registrata con successo. Riferimento: '+data.receipt.id+'. I valori non sono prelevabili.';
+   status.textContent='Valore interno aggiornato: '+fmt(Number(balances[form.elements.source.value]||0),8)+' '+form.elements.source.value+' · EUR interno: '+eur(balances.EUR||0);
+   showHistory(data.entries);form.elements.amount.value='';form.elements.accept.checked=false;requestKey=crypto.randomUUID();quote=null;
+   await loadPrivate();
+   const label=document.querySelector('[data-ye-total]');if(label)label.textContent=portfolioTotalText();
+  }catch(err){result.textContent='Operazione non registrata: '+(err.message||String(err));}
+  finally{busy=false;proceed.disabled=true}
+ };
+ refresh();
 }
 function action(type){
  if(type==='swap'&&cfg.financialOperationsEnabled!==true){openSwapEstimate();return}
