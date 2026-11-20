@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Allow crawlers to read each page's noindex directive.
-# Sitemap submission withdrawn from site configuration.
+Sitemap: https://youngexchange.eu/sitemap.xml
