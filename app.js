@@ -432,7 +432,12 @@ async function adminSelectSection(section){
   const {data:listData,error:listError}=await sb.functions.invoke('admin-invite-user',{
    body:{action:'list',page:1},headers:{Authorization:'Bearer '+auth.session.access_token}
   });
-  const users=(!listError&&listData?.ok&&Array.isArray(listData.users))?listData.users:[];adminCustomerDirectory=users;
+  if(listError||!listData?.ok||!Array.isArray(listData.users)){
+   let reason=listData?.error||'';
+   if(listError?.context&&!reason){try{const data=await listError.context.json();reason=data?.error||data?.message||''}catch(_error){}}
+   throw new Error('Impossibile caricare Utenti e conti: '+(reason||listError?.message||'servizio temporaneamente non disponibile'));
+  }
+  const users=listData.users;adminCustomerDirectory=users;
   const customerPhone=u=>u.phone_confirmed_at&&u.phone?u.phone:(u.phone_pending_verification||u.phone||'—');
   const customerPhoneStatus=u=>u.phone_confirmed_at?'Verificato via SMS':u.phone_manual_review?.phone&&u.phone_manual_review.phone===u.phone_pending_verification?'Confermato manualmente':u.phone_status_known===false?'Stato non disponibile':'Da verificare';
   const customerListHasMore=!!listData?.has_more;
@@ -626,11 +631,19 @@ async function adminSelectSection(section){
 }
 const adminNavRoot=$('pageContent');
 adminNavRoot.addEventListener('click',event=>{const target=event.target;if(!(target instanceof Element))return;const button=target.closest('button[data-admin-section]');if(button&&adminNavRoot.contains(button)){requestAdminSection(button.dataset.adminSection);return}const retry=target.closest('button[data-admin-retry]');if(retry&&adminNavRoot.contains(retry))requestAdminSection(retry.dataset.adminRetry)});
-function requestAdminSection(section){
+async function requestAdminSection(section){
  globalThis.YEXAdminNavigationDiagnostic?.('click-received',section);
  if(!session){globalThis.YEXAdminNavigationDiagnostic?.('access-denied','sessione assente');return false}
- if(!isAdmin){return false}
  if(!adminSections.includes(section)){globalThis.YEXAdminNavigationDiagnostic?.('panel-not-found',section);return false}
+ // The admin role can change while a session is active. Refresh it from the
+ // authoritative database; never grant privileges based on local state.
+ if(!isAdmin){
+  globalThis.YEXAdminNavigationDiagnostic?.('authorization-check','verifica del nuovo amministratore');
+  if(!await checkAdmin()){
+   globalThis.YEXAdminNavigationDiagnostic?.('access-denied','permessi non confermati; esci e accedi con il nuovo account');
+   return false;
+  }
+ }
  const hash='#admin?section='+encodeURIComponent(section);
  if(location.hash!==hash){const url=new URL(location.href);url.hash=hash;history.pushState(null,'',url)}
  route();
