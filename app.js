@@ -617,7 +617,7 @@ async function adminSelectSection(section){
  }
  if(section==='withdrawals'){
   view('Prelievi','<p class="small">La coda unificata include tutti i tipi di richiesta e i relativi stati.</p>');
-  yeAttachQueue(section);yeBankRequestsAdminRender(section);return;
+  yeAttachQueue(section);yeBankRequestsAdminRender(section);yeWithdrawalAdminRender(section);return;
  }
  if(section==='history'){
   view('Storico e controlli','<p class="small">Cronologia delle richieste. Non sostituisce un registro di audit immutabile o le prove di pagamento.</p>'+adminTools(enriched,'storico')+'<div data-admin-results="storico">'+adminTable(enriched,adminOperationColumns)+'</div>');adminBindTools(workspace,enriched,'storico',adminOperationColumns);return;
@@ -782,6 +782,55 @@ async function yeBankRequest(action,body){
  }
  return data;
 }
+function openWithdrawalRequest(){
+ if(!session||!sb){toast('Accedi al conto per consultare le richieste.');return}
+ document.querySelector('.ye-withdrawal-overlay')?.remove();
+ const modal=document.createElement('div');modal.className='modal-overlay ye-withdrawal-overlay';
+ const opts=['EUR','BTC','ETH','USDT'].map(cur=>'<option value="'+cur+'">'+(cur==='EUR'?'Euro (EUR)':cur==='BTC'?'Bitcoin (BTC)':cur==='ETH'?'Ethereum (ETH)':'Tether (USDT)')+'</option>').join('');
+ modal.innerHTML='<section class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Richiesta prelievo"><button class="modal-close" type="button" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / RICHIESTE</div><h3>Richiedi un prelievo</h3><p class="small">La richiesta non avvia bonifici o trasferimenti blockchain. I saldi mostrati sono registrazioni interne e non garantiscono la disponibilità di fondi prelevabili.</p><form id="yeWithdrawalForm"><label>Valuta da prelevare<select name="currency">'+opts+'</select></label><p class="small" id="yeWithdrawalBalance"></p><label>Quantità<input name="amount" type="number" min="0" step="any" required placeholder="0,00"></label><div id="yeWithdrawalBank"><label>Intestatario conto bancario<input name="beneficiary" maxlength="140" autocomplete="name" placeholder="Nome e cognome"></label><label>IBAN destinatario<input name="iban" maxlength="42" autocomplete="off" placeholder="IT…"></label></div><div id="yeWithdrawalCrypto" hidden><label>Rete blockchain<select name="network"></select></label><label>Indirizzo wallet destinatario<input name="address" maxlength="150" autocomplete="off" placeholder="Indirizzo del tuo wallet"></label><p class="small">Verifica attentamente la rete e l’indirizzo. Un trasferimento blockchain reale potrebbe essere irreversibile.</p></div><div class="notice" id="yeWithdrawalStatus" role="status" aria-live="polite">Compila la richiesta per inviarla all’amministrazione.</div><button class="primary full mt" type="submit">Invia richiesta di prelievo</button></form></section>';
+ document.body.append(modal);
+ const close=()=>modal.remove();modal.querySelector('.modal-close').onclick=close;modal.addEventListener('click',e=>{if(e.target===modal)close()});
+ const form=modal.querySelector('#yeWithdrawalForm'),status=modal.querySelector('#yeWithdrawalStatus'),balanceLabel=modal.querySelector('#yeWithdrawalBalance');
+ let key=crypto.randomUUID();
+ const networks={BTC:['Bitcoin'],ETH:['Ethereum'],USDT:['Ethereum (ERC-20)','Tron (TRC-20)']};
+ const update=()=>{
+  const currency=form.elements.currency.value,crypto=currency!=='EUR';
+  modal.querySelector('#yeWithdrawalBank').hidden=crypto;modal.querySelector('#yeWithdrawalCrypto').hidden=!crypto;
+  const choose=form.elements.network;choose.innerHTML=(networks[currency]||[]).map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  balanceLabel.textContent='Saldo interno non riservato: '+fmt(Math.max(0,balance(currency)-Number(wallet(currency)?.locked_balance||0)),currency==='EUR'?2:8)+' '+currency+' · importo non necessariamente prelevabile';
+  key=crypto.randomUUID();
+ };
+ form.elements.currency.addEventListener('change',update);
+ form.elements.amount.addEventListener('input',()=>{key=crypto.randomUUID()});
+ update();
+ form.onsubmit=async e=>{
+  e.preventDefault();const button=form.querySelector('[type=submit]'),currency=form.elements.currency.value,amount=Number(form.elements.amount.value);
+  const available=Math.max(0,balance(currency)-Number(wallet(currency)?.locked_balance||0));
+  if(!(amount>0)||amount>available){status.textContent='Importo superiore al saldo interno non riservato o non valido.';return}
+  if(!confirm('Inviare la richiesta per una valutazione? Nessun trasferimento o prelievo sarà eseguito automaticamente.'))return;
+  button.disabled=true;status.textContent='Registrazione richiesta in corso…';
+  try{
+   const {data:auth,error:sessionError}=await sb.auth.getSession();if(sessionError||!auth?.session?.access_token)throw new Error('Sessione scaduta');
+   const {data,error}=await sb.functions.invoke('withdrawal-intents',{body:{action:'create',currency,amount,request_key:key,beneficiary:currency==='EUR'?form.elements.beneficiary.value:'',iban:currency==='EUR'?form.elements.iban.value:'',crypto_network:currency!=='EUR'?form.elements.network.value:'',crypto_address:currency!=='EUR'?form.elements.address.value:''},headers:{Authorization:'Bearer '+auth.session.access_token}});
+   if(error||!data?.ok){let reason=data?.error||'';if(error?.context&&!reason){try{const d=await error.context.json();reason=d?.error||''}catch(_ignore){}}throw new Error(reason||error?.message||'Errore durante il salvataggio')}
+   status.textContent='✓ Richiesta registrata con riferimento '+data.request.id+'. In attesa di valutazione amministrativa. Nessun saldo è stato addebitato e nessun pagamento è partito.';
+   button.textContent='Richiesta inviata';key=crypto.randomUUID();
+  }catch(error){status.textContent='Richiesta non registrata: '+(error.message||String(error));button.disabled=false}
+ };
+}
+async function yeWithdrawalAdminRender(section){
+ const workspace=$('adminWorkspace');if(!workspace)return;
+ const panel=document.createElement('section');panel.id='yeWithdrawalAdminQueue';panel.className='card mt';workspace.append(panel);panel.textContent='Caricamento richieste di prelievo…';
+ try{
+ const {data:auth,error:sessionError}=await sb.auth.getSession();if(sessionError||!auth?.session?.access_token)throw new Error('Sessione scaduta');
+ const {data,error}=await sb.functions.invoke('withdrawal-intents',{body:{action:'admin_list'},headers:{Authorization:'Bearer '+auth.session.access_token}});
+ if(error||!data?.ok)throw new Error(data?.error||error?.message||'Elenco non disponibile');
+ if(!panel.isConnected||activeAdminSection!==section)return;
+ const rows=data.requests||[];
+ panel.innerHTML='<h3>Richieste prelievi EUR e crypto</h3><p class="small">Solo richieste informative. Nessun trasferimento viene eseguito automaticamente. Verificare titolarità, disponibilità e destinazione prima di eventuali operazioni esterne.</p>'+
+ adminTable(rows,[['Cliente',r=>adminCell(r.email||r.user_id)],['Valuta',r=>adminCell(r.currency)],['Quantità',r=>adminCell(r.amount)],['Destinazione',r=>adminCell(r.destination_type==='bank'?(r.beneficiary||'')+' · '+(r.iban||''):(r.crypto_network||'')+' · '+(r.crypto_address||'')],['Stato',r=>adminCell(r.status)],['Data',r=>adminCell(new Date(r.created_at).toLocaleString('it-IT'))]]);
+ }catch(error){if(panel.isConnected)panel.textContent='Richieste non disponibili: '+(error.message||String(error))}
+}
 function showEurAvailability(type){
  if(!session)return;
  document.querySelector('.ye-eur-availability-overlay')?.remove();
@@ -888,7 +937,8 @@ async function openSwapEstimate(){
 }
 function action(type){
  if(type==='swap'&&cfg.financialOperationsEnabled!==true){openSwapEstimate();return}
- if((type==='deposit'||type==='withdraw')&&cfg.financialOperationsEnabled!==true){showEurAvailability(type);return}
+ if(type==='withdraw'&&cfg.financialOperationsEnabled!==true){openWithdrawalRequest();return}
+ if(type==='deposit'&&cfg.financialOperationsEnabled!==true){showEurAvailability(type);return}
  if(['deposit','withdraw','transfer','swap','buy','sell'].includes(type)&&cfg.financialOperationsEnabled!==true){toast('Operazioni finanziarie disabilitate finché il backend contabile non è verificato.');return}
  if(type==='password'){passwordReset();return}
  if(type==='phone'){phoneVerification();return}
