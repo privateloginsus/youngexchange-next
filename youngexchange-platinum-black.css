@@ -353,3 +353,6 @@ html,body{background:var(--px-bg)!important}
   #appScreen .side-brand .brandmark{animation:none!important;transition:none!important}
   #appScreen a.side-brand:hover .brandmark{transform:none!important}
 }
+
+/* Auth/dashboard must never coexist. Stronger specificity than #appScreen.app display:grid!important. */
+html body #appScreen.app[hidden],html body #authScreen.auth-screen[hidden]{display:none!important;visibility:hidden!important;pointer-events:none!important}
