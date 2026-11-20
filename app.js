@@ -828,7 +828,7 @@ async function yeWithdrawalAdminRender(section){
  if(!panel.isConnected||activeAdminSection!==section)return;
  const rows=data.requests||[];
  panel.innerHTML='<h3>Richieste prelievi EUR e crypto</h3><p class="small">Solo richieste informative. Nessun trasferimento viene eseguito automaticamente. Verificare titolarità, disponibilità e destinazione prima di eventuali operazioni esterne.</p>'+
- adminTable(rows,[['Cliente',r=>adminCell(r.email||r.user_id)],['Valuta',r=>adminCell(r.currency)],['Quantità',r=>adminCell(r.amount)],['Destinazione',r=>adminCell(r.destination_type==='bank'?(r.beneficiary||'')+' · '+(r.iban||''):(r.crypto_network||'')+' · '+(r.crypto_address||'')],['Stato',r=>adminCell(r.status)],['Data',r=>adminCell(new Date(r.created_at).toLocaleString('it-IT'))]]);
+ adminTable(rows,[['Cliente',r=>adminCell(r.email||r.user_id)],['Valuta',r=>adminCell(r.currency)],['Quantità',r=>adminCell(r.amount)],['Destinazione',r=>adminCell(r.destination_type==='bank'?(r.beneficiary||'')+' · '+(r.iban||''):(r.crypto_network||'')+' · '+(r.crypto_address||''))],['Stato',r=>adminCell(r.status)],['Data',r=>adminCell(new Date(r.created_at).toLocaleString('it-IT'))]]);
  }catch(error){if(panel.isConnected)panel.textContent='Richieste non disponibili: '+(error.message||String(error))}
 }
 function showEurAvailability(type){
