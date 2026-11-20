@@ -794,8 +794,8 @@ function openWithdrawalRequest(){
  let key=crypto.randomUUID();
  const networks={BTC:['Bitcoin'],ETH:['Ethereum'],USDT:['Ethereum (ERC-20)','Tron (TRC-20)']};
  const update=()=>{
-  const currency=form.elements.currency.value,crypto=currency!=='EUR';
-  modal.querySelector('#yeWithdrawalBank').hidden=crypto;modal.querySelector('#yeWithdrawalCrypto').hidden=!crypto;
+  const currency=form.elements.currency.value,isCrypto=currency!=='EUR';
+  modal.querySelector('#yeWithdrawalBank').hidden=isCrypto;modal.querySelector('#yeWithdrawalCrypto').hidden=!isCrypto;
   const choose=form.elements.network;choose.innerHTML=(networks[currency]||[]).map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
   balanceLabel.textContent='Saldo interno non riservato: '+fmt(Math.max(0,balance(currency)-Number(wallet(currency)?.locked_balance||0)),currency==='EUR'?2:8)+' '+currency+' · importo non necessariamente prelevabile';
   key=crypto.randomUUID();
