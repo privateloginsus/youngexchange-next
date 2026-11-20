@@ -518,7 +518,7 @@ async function adminSelectSection(section){
   }
  if(section==='deposits'){
   view('Depositi','<p class="small">La coda unificata include depositi, prelievi, conversioni e trasferimenti.</p>');
-  yeAttachQueue(section);return;
+  yeAttachQueue(section);yeBankRequestsAdminRender(section);return;
  }
  if(section==='balances'){
   const currentUserId=session?.user?.id;
@@ -617,7 +617,7 @@ async function adminSelectSection(section){
  }
  if(section==='withdrawals'){
   view('Prelievi','<p class="small">La coda unificata include tutti i tipi di richiesta e i relativi stati.</p>');
-  yeAttachQueue(section);return;
+  yeAttachQueue(section);yeBankRequestsAdminRender(section);return;
  }
  if(section==='history'){
   view('Storico e controlli','<p class="small">Cronologia delle richieste. Non sostituisce un registro di audit immutabile o le prove di pagamento.</p>'+adminTools(enriched,'storico')+'<div data-admin-results="storico">'+adminTable(enriched,adminOperationColumns)+'</div>');adminBindTools(workspace,enriched,'storico',adminOperationColumns);return;
@@ -770,41 +770,63 @@ function route(){if(!session)return;const renderGeneration=++routeGeneration;con
 function bindPage(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));document.querySelectorAll('[data-trade]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.trade;if(location.hash!=='#markets')location.hash='markets';else route()}));$('personalProfileForm')?.addEventListener('submit',savePersonalProfile);$('personalEmailForm')?.addEventListener('submit',requestPersonalEmailChange);$('refreshMarkets')?.addEventListener('click',()=>fetchQuotes(true));$('yeOpenSupport')?.addEventListener('click',()=>yeOpenSupport());$('yeOpenSupportSecondary')?.addEventListener('click',()=>yeOpenSupport());document.querySelectorAll('[data-support-topic]').forEach(b=>b.addEventListener('click',()=>yeOpenSupport(b.dataset.supportTopic)));$('tradeAsset')?.addEventListener('change',e=>{selected=e.target.value;route()})}
 async function savePersonalProfile(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare il profilo.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalProfileStatus');let payload;try{payload=personalProfilePayload(form.elements.first_name.value,form.elements.last_name.value)}catch(error){if(status)status.textContent=error.message;return}if(button)button.disabled=true;if(status)status.textContent='Salvataggio…';try{const {data:updated,error}=await sb.auth.updateUser({data:{first_name:form.elements.first_name.value.trim(),last_name:form.elements.last_name.value.trim()}});if(error)throw error;if(updated?.user)session={...session,user:updated.user};profile={...(profile||{}),...payload};updateHeaderIdentity();if(status)status.textContent='Nome e cognome aggiornati.';toast('Profilo aggiornato.')}catch(error){if(status)status.textContent='Salvataggio non riuscito: '+error.message}finally{if(button)button.disabled=false}}
 async function requestPersonalEmailChange(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare l’email.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalEmailStatus'),email=form.elements.email.value.trim().toLowerCase();if(!email||email===String(session.user.email||'').toLowerCase()){if(status)status.textContent='Inserisci un indirizzo email diverso da quello attuale.';return}if(button)button.disabled=true;if(status)status.textContent='Invio della richiesta di conferma…';try{const {error}=await sb.auth.updateUser({email},{emailRedirectTo:authRedirectUrl()});if(error)throw error;if(status)status.textContent='Richiesta inviata. Segui il link di conferma inviato da Supabase Auth; l’indirizzo attuale resta valido fino al completamento della verifica.';toast('Richiesta di cambio email inviata: controlla la posta.')}catch(error){if(status)status.textContent='Richiesta non riuscita: '+error.message}finally{if(button)button.disabled=false}}
+async function yeBankRequest(action,body){
+ if(!sb||!session)throw new Error('Accedi al conto.');
+ const {data:auth,error:sessionError}=await sb.auth.getSession();
+ if(sessionError||!auth?.session?.access_token)throw new Error('Sessione scaduta.');
+ const {data,error}=await sb.functions.invoke('bank-service-requests',{body:{action,...body},headers:{Authorization:'Bearer '+auth.session.access_token}});
+ if(error||!data?.ok){
+  let reason=data?.error||'';
+  if(error?.context&&!reason){try{const response=await error.context.json();reason=response?.error||''}catch(_e){}}
+  throw new Error(reason||error?.message||'Servizio non disponibile');
+ }
+ return data;
+}
 function showEurAvailability(type){
  if(!session)return;
  document.querySelector('.ye-eur-availability-overlay')?.remove();
  const deposit=type==='deposit';
- const title=deposit?'Deposito in euro':'Prelievo in euro';
- const first=deposit?'Le coordinate bancarie per i depositi EUR non sono ancora disponibili.':'I prelievi EUR verso conti bancari non sono ancora disponibili.';
- const second=deposit?'Il servizio per ricevere depositi in euro è in preparazione. Ti informeremo quando saranno disponibili le coordinate bancarie. Grazie per l’attesa!':'Il servizio di prelievo bancario è in preparazione. Ti informeremo quando sarà disponibile. Grazie per l’attesa!';
- const overlay=document.createElement('div');
- overlay.className='modal-overlay ye-eur-availability-overlay';
- overlay.innerHTML='<section class="modal ye-eur-availability" role="dialog" aria-modal="true" aria-labelledby="yeEurAvailabilityTitle" aria-describedby="yeEurAvailabilityDescription">'+
-  '<button class="modal-close" type="button" aria-label="Chiudi">×</button>'+
-  '<div class="eyebrow">YOUNGEXCHANGE / SERVIZI EUR</div>'+
-  '<div class="ye-eur-spinner" aria-hidden="true"></div>'+
-  '<h3 id="yeEurAvailabilityTitle">'+title+'</h3>'+
-  '<p id="yeEurAvailabilityDescription" role="status">'+first+'</p>'+
-  '<p class="small">Il tuo saldo YoungExchange resta consultabile nel Portafoglio. Nessuna richiesta è stata inviata e nessun importo è stato movimentato.</p>'+
-  '<button type="button" class="primary full mt" id="yeEurAvailabilityAck">Ho capito</button>'+
-  '</section>';
+ const title=deposit?'Coordinate per bonifico in euro':'Prelievo in euro';
+ const overlay=document.createElement('div');overlay.className='modal-overlay ye-eur-availability-overlay';
+ overlay.innerHTML='<section class="modal ye-eur-availability" role="dialog" aria-modal="true" aria-labelledby="yeEurAvailabilityTitle">'+
+ '<button class="modal-close" type="button" aria-label="Chiudi">×</button>'+
+ '<div class="eyebrow">YOUNGEXCHANGE / SERVIZI BANCARI</div>'+
+ '<div class="ye-eur-spinner" aria-hidden="true"></div>'+
+ '<h3 id="yeEurAvailabilityTitle">'+esc(title)+'</h3>'+
+ '<p id="yeEurAvailabilityDescription" role="status" aria-live="polite">Verifica della disponibilità in corso…</p>'+
+ '<p class="small">Le coordinate bancarie non sono ancora abilitate. Non effettuare bonifici verso conti comunicati tramite canali non verificati. Nessun pagamento e nessuna modifica ai saldi sono avvenuti.</p>'+
+ '<button type="button" class="primary full mt" id="yeEurAvailabilityAck">Ho capito</button></section>';
  const close=()=>{overlay.remove();document.removeEventListener('keydown',onEscape)};
  const onEscape=e=>{if(e.key==='Escape')close()};
- document.body.append(overlay);
- document.addEventListener('keydown',onEscape);
- overlay.querySelector('.modal-close').addEventListener('click',close);
+ document.body.append(overlay);document.addEventListener('keydown',onEscape);
+ overlay.querySelector('.modal-close').onclick=close;
  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
- let acknowledged=false;
- const button=overlay.querySelector('#yeEurAvailabilityAck');
- button.addEventListener('click',()=>{
-  if(acknowledged){close();return}
-  acknowledged=true;
-  overlay.querySelector('#yeEurAvailabilityDescription').textContent=second;
+ overlay.querySelector('#yeEurAvailabilityAck').onclick=close;
+ yeBankRequest('request',{request_type:deposit?'deposit':'withdrawal'}).then(data=>{
+  if(!overlay.isConnected)return;
   overlay.querySelector('.ye-eur-spinner')?.remove();
-  button.textContent='Chiudi';
-  button.focus();
+  overlay.querySelector('#yeEurAvailabilityDescription').textContent=deposit
+  ?'Richiesta registrata. Coordinate per bonifico in attesa di configurazione e verifica da parte dell’amministrazione.'
+  :'Richiesta registrata. Il servizio di prelievo bancario è in attesa di configurazione e verifica.';
+ }).catch(error=>{
+  if(!overlay.isConnected)return;
+  overlay.querySelector('.ye-eur-spinner')?.remove();
+  overlay.querySelector('#yeEurAvailabilityDescription').textContent='Impossibile registrare la richiesta: '+(error.message||String(error))+'. Riprova più tardi.';
  });
- button.focus();
+}
+async function yeBankRequestsAdminRender(section){
+ const workspace=$('adminWorkspace');if(!workspace)return;
+ let panel=workspace.querySelector('#yeBankServiceAdmin');
+ if(!panel){panel=document.createElement('section');panel.id='yeBankServiceAdmin';panel.className='card mt';workspace.append(panel)}
+ panel.textContent='Caricamento richieste coordinate bancarie…';
+ try{
+  const data=await yeBankRequest('admin_list',{});
+  if(!panel.isConnected||activeAdminSection!==section)return;
+  const rows=(data.requests||[]).filter(row=>row.request_type===(section==='deposits'?'deposit':'withdrawal'));
+  panel.innerHTML='<h3>Richieste clienti — '+(section==='deposits'?'bonifici in entrata':'prelievi bancari')+'</h3>'+
+   '<p class="small">Le richieste sono informative: non autorizzano automaticamente incassi o pagamenti. Le coordinate non vengono pubblicate prima della verifica di titolarità e conformità.</p>'+
+   adminTable(rows,[['Cliente',r=>adminCell(r.email||r.user_id)],['Data richiesta',r=>adminCell(new Date(r.created_at).toLocaleString('it-IT'))],['Stato',r=>adminCell(r.status==='pending'?'In attesa di configurazione':'Esaminata')]]);
+ }catch(error){if(panel.isConnected)panel.textContent='Richieste non disponibili: '+(error.message||String(error));}
 }
 if(!document.getElementById('ye-conversion-spinner-style')){const style=document.createElement('style');style.id='ye-conversion-spinner-style';style.textContent='.ye-conversion-spinner{display:inline-block;width:17px;height:17px;border:2px solid #2ddc9b;border-top-color:transparent;border-radius:50%;vertical-align:middle;animation:ye-conversion-spin .65s linear infinite}@keyframes ye-conversion-spin{to{transform:rotate(360deg)}}';document.head.appendChild(style)}
 async function openSwapEstimate(){
