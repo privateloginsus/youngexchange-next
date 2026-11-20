@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0a1d16"/><path d="M13 16h12l7 13 7-13h12L38 39v10H26V39z" fill="#35e6a1"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="YoungExchange">
+<rect x="1" y="1" width="94" height="94" rx="23" fill="#061b14"/>
+<rect x="3" y="3" width="90" height="90" rx="21" fill="none" stroke="#2ce6a1" stroke-width="4"/>
+<path d="M21 20h17l10 20 10-20h17L57 54v23H39V54Z" fill="#36e9aa"/>
+</svg>
