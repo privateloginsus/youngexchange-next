@@ -266,7 +266,7 @@ function adminPage(){
  return heading('Amministrazione','Centro di controllo · YoungExchange')+
  '<div class="ye-plat-admin-head"><div><span class="ye-plat-kicker">YOUNGEXCHANGE / CENTRO DI CONTROLLO</span><h2>Workspace amministrativo</h2><p>Conti, richieste e controlli in un unico ambiente protetto.</p></div><span class="ye-plat-admin-chip">◆ YoungExchange</span></div>'+
  '<div class="ye-plat-admin-grid">'+sections.map(([id,label,description])=>'<button type="button" class="ye-plat-admin-tile '+(activeAdminSection===id?'active':'')+'" data-admin-section="'+id+'"><span class="ye-plat-admin-tile-icon">'+({users:'♙',deposits:'↓',withdrawals:'↑',transactions:'↔',balances:'◈',crypto:'⇄',history:'▤',settings:'⚙'}[id])+'</span><span><strong>'+esc(label)+'</strong><small>'+esc(description)+'</small></span><span class="ye-plat-admin-chevron">↗</span></button>').join('')+'</div>'+
- '<div id="adminWorkspace" class="ye-plat-workspace mt"><section class="card"><h3>Caricamento dati amministrativi…</h3></section></div>';
+ '<div id="yeBankAdminNotification" class="mt" role="status" aria-live="polite">Controllo delle richieste di deposito…</div><div id="adminWorkspace" class="ye-plat-workspace mt"><section class="card"><h3>Caricamento dati amministrativi…</h3></section></div>';
 }
 // PLATINUM: helper amministrativi centralizzati. Ogni RPC applica le autorizzazioni nel database.
 const adminDate=value=>{if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?'—':date.toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})};
@@ -779,7 +779,7 @@ async function adminInviteUser(event){
  finally{button.disabled=false}
 }
 const pages={dashboard:['Panoramica',dashboard],markets:['Mercati',markets],wallet:['Portafoglio',walletPage],activity:['Attività',()=>heading('Attività','Caricamento delle operazioni…')],security:['Sicurezza',security],'profile-settings':['Impostazioni personali',personalSettings],support:['Assistenza',support],admin:['Amministrazione',adminPage]};
-function route(){if(!session)return;const renderGeneration=++routeGeneration;const [page,fragmentQuery='']=location.hash.slice(1).split('?');if(page==='admin'){const section=new URLSearchParams(fragmentQuery).get('section');if(section&&adminSections.includes(section))activeAdminSection=section}const key=(page==='admin'&&!isAdmin)?'dashboard':pages[page]?page:'dashboard';if(page==='admin'&&!isAdmin){history.replaceState(null,'',location.pathname+location.search+'#dashboard')}$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='wallet')yeRenderInternalAllocation();if(key==='activity')activity(renderGeneration);if(key==='admin')loadAdmin();if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);window.addEventListener('popstate',route);
+function route(){if(!session)return;const renderGeneration=++routeGeneration;const [page,fragmentQuery='']=location.hash.slice(1).split('?');if(page==='admin'){const section=new URLSearchParams(fragmentQuery).get('section');if(section&&adminSections.includes(section))activeAdminSection=section}const key=(page==='admin'&&!isAdmin)?'dashboard':pages[page]?page:'dashboard';if(page==='admin'&&!isAdmin){history.replaceState(null,'',location.pathname+location.search+'#dashboard')}$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='wallet')yeRenderInternalAllocation();if(key==='activity')activity(renderGeneration);if(key==='admin'){loadAdmin();yeBankNotificationRefresh();}if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);window.addEventListener('popstate',route);
 function bindPage(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));document.querySelectorAll('[data-trade]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.trade;if(location.hash!=='#markets')location.hash='markets';else route()}));$('personalProfileForm')?.addEventListener('submit',savePersonalProfile);$('personalEmailForm')?.addEventListener('submit',requestPersonalEmailChange);$('refreshMarkets')?.addEventListener('click',()=>fetchQuotes(true));$('yeOpenSupport')?.addEventListener('click',()=>yeOpenSupport());$('yeOpenSupportSecondary')?.addEventListener('click',()=>yeOpenSupport());document.querySelectorAll('[data-support-topic]').forEach(b=>b.addEventListener('click',()=>yeOpenSupport(b.dataset.supportTopic)));$('tradeAsset')?.addEventListener('change',e=>{selected=e.target.value;route()})}
 async function savePersonalProfile(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare il profilo.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalProfileStatus');let payload;try{payload=personalProfilePayload(form.elements.first_name.value,form.elements.last_name.value)}catch(error){if(status)status.textContent=error.message;return}if(button)button.disabled=true;if(status)status.textContent='Salvataggio…';try{const {data:updated,error}=await sb.auth.updateUser({data:{first_name:form.elements.first_name.value.trim(),last_name:form.elements.last_name.value.trim()}});if(error)throw error;if(updated?.user)session={...session,user:updated.user};profile={...(profile||{}),...payload};updateHeaderIdentity();if(status)status.textContent='Nome e cognome aggiornati.';toast('Profilo aggiornato.')}catch(error){if(status)status.textContent='Salvataggio non riuscito: '+error.message}finally{if(button)button.disabled=false}}
 async function requestPersonalEmailChange(event){event.preventDefault();if(!sb||!session){toast('Accedi al conto per modificare l’email.');return}const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),status=$('personalEmailStatus'),email=form.elements.email.value.trim().toLowerCase();if(!email||email===String(session.user.email||'').toLowerCase()){if(status)status.textContent='Inserisci un indirizzo email diverso da quello attuale.';return}if(button)button.disabled=true;if(status)status.textContent='Invio della richiesta di conferma…';try{const {error}=await sb.auth.updateUser({email},{emailRedirectTo:authRedirectUrl()});if(error)throw error;if(status)status.textContent='Richiesta inviata. Segui il link di conferma inviato da Supabase Auth; l’indirizzo attuale resta valido fino al completamento della verifica.';toast('Richiesta di cambio email inviata: controlla la posta.')}catch(error){if(status)status.textContent='Richiesta non riuscita: '+error.message}finally{if(button)button.disabled=false}}
@@ -880,15 +880,48 @@ async function yeBankRequestsAdminRender(section){
  const workspace=$('adminWorkspace');if(!workspace)return;
  let panel=workspace.querySelector('#yeBankServiceAdmin');
  if(!panel){panel=document.createElement('section');panel.id='yeBankServiceAdmin';panel.className='card mt';workspace.append(panel)}
- panel.textContent='Caricamento richieste coordinate bancarie…';
+ panel.textContent='Caricamento richieste di deposito…';
  try{
   const data=await yeBankRequest('admin_list',{});
   if(!panel.isConnected||activeAdminSection!==section)return;
   const rows=(data.requests||[]).filter(row=>row.request_type===(section==='deposits'?'deposit':'withdrawal'));
-  panel.innerHTML='<h3>Richieste clienti — '+(section==='deposits'?'bonifici in entrata':'prelievi bancari')+'</h3>'+
-   '<p class="small">Le richieste sono informative: non autorizzano automaticamente incassi o pagamenti. Le coordinate non vengono pubblicate prima della verifica di titolarità e conformità.</p>'+
-   adminTable(rows,[['Cliente',r=>adminCell(r.email||r.user_id)],['Data richiesta',r=>adminCell(new Date(r.created_at).toLocaleString('it-IT'))],['Stato',r=>adminCell(r.status==='pending'?'In attesa di configurazione':'Esaminata')]]);
+  panel.innerHTML='<h3>Messaggi ricevuti — '+(section==='deposits'?'richieste coordinate di deposito':'richieste bancarie')+'</h3>'+
+  '<p class="small">Ogni richiesta è collegata al conto che l’ha inviata. La visualizzazione o la presa in carico non autorizza bonifici. Le coordinate bancarie richiedono una verifica indipendente del conto di incasso prima di essere pubblicate.</p>'+
+  '<div id="yeBankRequestDetails" role="status" aria-live="polite"></div>'+
+  (rows.length?rows.map(row=>'<button type="button" class="secondary-btn ye-bank-request-item" style="display:block;text-align:left;width:100%;margin:7px 0" data-bank-request="'+esc(row.id)+'">'+
+   '<strong>'+esc(row.email||row.user_id)+'</strong> · '+esc(new Date(row.created_at).toLocaleString('it-IT'))+
+   ' · '+esc(row.status==='pending'?'Da esaminare':'Esaminata')+'</button>').join(''):'<p class="small">Nessuna richiesta ricevuta.</p>');
+  const details=panel.querySelector('#yeBankRequestDetails');
+  panel.querySelectorAll('[data-bank-request]').forEach(button=>button.onclick=()=>{
+   const row=rows.find(item=>item.id===button.dataset.bankRequest);if(!row)return;
+   details.innerHTML='<section class="card mt"><h4>Richiesta del conto selezionato</h4>'+
+    '<p><strong>Cliente:</strong> '+esc(row.email||'Email non disponibile')+'</p>'+
+    '<p><strong>ID conto:</strong> '+esc(row.user_id)+'</p>'+
+    '<p><strong>Tipo:</strong> '+esc(row.request_type==='deposit'?'Coordinate bancarie per deposito':'Informazioni prelievo')+'</p>'+
+    '<p><strong>Ricevuta:</strong> '+esc(new Date(row.created_at).toLocaleString('it-IT'))+'</p>'+
+    '<p><strong>Stato:</strong> '+esc(row.status==='pending'?'Da esaminare':'Esaminata')+'</p>'+
+    '<p class="small">Non sono state pubblicate coordinate bancarie al cliente. Per rendere disponibili istruzioni di deposito sono necessari un conto ricevente autorizzato e la verifica della titolarità.</p>'+
+    (row.status==='pending'&&row.request_type==='deposit'?'<button type="button" class="secondary-btn" id="yeBankMarkReviewed">Segna richiesta come esaminata</button>':'')+'</section>';
+   const confirm=details.querySelector('#yeBankMarkReviewed');
+   if(confirm)confirm.onclick=async()=>{
+    confirm.disabled=true;
+    try{await yeBankRequest('admin_review',{request_id:row.id});await yeBankRequestsAdminRender(section);await yeBankNotificationRefresh()}
+    catch(error){confirm.disabled=false;details.insertAdjacentHTML('beforeend','<p class="small" role="alert">'+esc(error.message||String(error))+'</p>')}
+   };
+  });
  }catch(error){if(panel.isConnected)panel.textContent='Richieste non disponibili: '+(error.message||String(error));}
+}
+async function yeBankNotificationRefresh(){
+ const host=$('yeBankAdminNotification');if(!host||!session||!isAdmin)return;
+ try{
+  const data=await yeBankRequest('admin_list',{});
+  if(!host.isConnected||!session||!isAdmin)return;
+  const pending=(data.requests||[]).filter(row=>row.request_type==='deposit'&&row.status==='pending');
+  host.innerHTML='<button type="button" class="secondary-btn" id="yeBankAdminNotificationButton">'+
+   (pending.length?'🔔 Depositi · '+pending.length+' richiesta'+(pending.length===1?'':'e')+' da esaminare':'Depositi · Nessuna nuova richiesta')+'</button>';
+  const button=host.querySelector('#yeBankAdminNotificationButton');
+  if(button)button.onclick=()=>requestAdminSection('deposits');
+ }catch(error){if(host.isConnected)host.textContent='Avvisi deposito non disponibili';}
 }
 if(!document.getElementById('ye-conversion-spinner-style')){const style=document.createElement('style');style.id='ye-conversion-spinner-style';style.textContent='.ye-conversion-spinner{display:inline-block;width:17px;height:17px;border:2px solid #2ddc9b;border-top-color:transparent;border-radius:50%;vertical-align:middle;animation:ye-conversion-spin .65s linear infinite}@keyframes ye-conversion-spin{to{transform:rotate(360deg)}}';document.head.appendChild(style)}
 async function openSwapEstimate(){
