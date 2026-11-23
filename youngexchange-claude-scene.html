@@ -233,7 +233,7 @@ function size(){var w=innerWidth,hh=innerHeight,dpr=Math.min(devicePixelRatio||1
  cam.aspect=w/hh;cam.updateProjectionMatrix();U.uRes.value.set(w,hh);
  var r=stage.getBoundingClientRect(),H=2*10*Math.tan(cam.fov*Math.PI/360),W=H*cam.aspect;
  var s=Math.min(r.height*1.04/hh*H/3.9,(r.width*.9/w)*W/4.6);
- root.scale.setScalar(Math.max(s,.2));
+ root.scale.setScalar(Math.max(s*.86,.18));
  var cy=r.top+r.height*.5;root.position.y=(.5-cy/hh)*H-.3*root.scale.x-0.22;
  var sS=root.scale.x,pl=root.position.y-1.5*sS;RP.value=pl;U.uP.value.set(.5,.5+pl/H);RF.value=3.4*sS;rroot.scale.set(sS,-sS,sS);rroot.position.y=2*pl-root.position.y;U.uG.value.set(.5,1-cy/hh);}
 addEventListener('resize',size);
