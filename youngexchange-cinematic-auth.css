@@ -91,3 +91,9 @@
 #authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 17px rgba(0,130,76,.26))!important}
 #authScreen.ye-cinematic .ye-auth-credits span{display:inline-flex!important;align-items:center!important;gap:4px!important}
 #authScreen.ye-cinematic .ye-auth-credits .italy{display:none!important}
+
+/* v5: translucent frosted matte login; jewel remains visible in its own space */
+#authScreen.ye-cinematic .auth-box{background:rgba(7,19,16,.48)!important;backdrop-filter:blur(24px) saturate(90%)!important;-webkit-backdrop-filter:blur(24px) saturate(90%)!important;border:1px solid rgba(172,217,190,.27)!important;box-shadow:0 20px 75px rgba(0,0,0,.28),inset 0 1px rgba(237,255,246,.09)!important}
+#authScreen.ye-cinematic .auth-box:before{opacity:.32!important}
+#authScreen.ye-cinematic .auth-box input{background:rgba(0,13,10,.45)!important;border-color:rgba(140,190,160,.24)!important}
+#authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 16px rgba(0,140,76,.23))!important}
