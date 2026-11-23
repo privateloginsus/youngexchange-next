@@ -1,0 +1,2 @@
+/* Move the existing logout control to the horizontal header. No event handlers are replaced. */
+(()=>{'use strict';function init(){const app=document.getElementById('appScreen'),actions=app?.querySelector('.top-actions'),button=app?.querySelector('#signout');if(!actions||!button||button.parentElement===actions)return;actions.appendChild(button)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()})();
