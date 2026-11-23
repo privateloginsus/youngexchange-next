@@ -109,3 +109,25 @@
 #authScreen.ye-cinematic .ye-auth-stage canvas{width:100%!important;height:100%!important;filter:drop-shadow(0 0 23px rgba(0,197,113,.30))!important}
 #authScreen.ye-cinematic .ye-auth-fallback{color:#00aa69!important;text-shadow:0 0 24px rgba(0,196,114,.45)!important}
 @media(max-width:560px){#authScreen.ye-cinematic{padding:65px 12px 28px!important}#authScreen.ye-cinematic .auth-panel{width:min(100%,370px)!important}#authScreen.ye-cinematic .ye-auth-stage{width:100%!important;height:270px!important;margin-bottom:20px!important}#authScreen.ye-cinematic .auth-box{width:100%!important;padding:17px 16px!important}#authScreen.ye-cinematic .ye-cosmos-platform{top:295px!important}}
+
+/* v7: deep cinematic emerald atmosphere while keeping the working centered form. */
+#authScreen.ye-cinematic{background:
+radial-gradient(ellipse 28% 40% at 15% 55%,rgba(0,190,124,.27),transparent 90%),
+radial-gradient(ellipse 35% 45% at 82% 33%,rgba(0,140,100,.31),transparent 86%),
+radial-gradient(ellipse 35% 25% at 50% 18%,rgba(4,169,112,.34),transparent 88%),
+radial-gradient(ellipse 80% 65% at 50% 65%,#06221b 0%,#010a09 68%,#000404 100%)!important}
+#authScreen.ye-cinematic:before{inset:-20%!important;background:
+radial-gradient(ellipse 17% 38% at 22% 43%,rgba(0,255,159,.26),transparent 80%),
+radial-gradient(ellipse 12% 44% at 70% 24%,rgba(0,211,151,.27),transparent 86%),
+radial-gradient(ellipse 23% 14% at 42% 62%,rgba(0,231,135,.24),transparent 85%),
+conic-gradient(from 25deg at 52% 35%,transparent 0deg,rgba(8,150,102,.14) 28deg,transparent 58deg,rgba(0,226,136,.1) 97deg,transparent 140deg,rgba(0,184,125,.14) 240deg,transparent 290deg)!important;filter:blur(31px) saturate(155%)!important;opacity:.95!important}
+#authScreen.ye-cinematic:after{background-image:
+radial-gradient(1px 1px at 12% 24%,#caffee 95%,transparent),
+radial-gradient(1px 1px at 77% 17%,#8dfbd0 95%,transparent),
+radial-gradient(2px 2px at 86% 76%,#e4fff4 95%,transparent),
+radial-gradient(1px 1px at 30% 81%,#aaffd3 95%,transparent),
+radial-gradient(1.5px 1.5px at 63% 48%,#4fffc3 95%,transparent)!important;background-size:173px 191px,251px 211px,307px 257px,397px 331px,461px 387px!important;opacity:.76!important}
+#authScreen.ye-cinematic .ye-auth-stage:before{inset:6% 13%!important;background:radial-gradient(ellipse,rgba(0,249,137,.28),rgba(0,111,74,.13) 38%,transparent 75%)!important;filter:blur(44px)!important}
+#authScreen.ye-cinematic .auth-box{background:linear-gradient(155deg,rgba(5,23,19,.51),rgba(0,8,7,.69))!important;backdrop-filter:blur(27px) saturate(110%)!important;-webkit-backdrop-filter:blur(27px) saturate(110%)!important;border:1px solid rgba(103,242,169,.39)!important;box-shadow:0 18px 75px rgba(0,0,0,.48),0 0 34px rgba(0,202,117,.13),inset 0 1px rgba(208,255,226,.15)!important}
+#authScreen.ye-cinematic .ye-cosmos-horizon{opacity:.72!important;filter:drop-shadow(0 -7px 20px rgba(0,217,139,.27))!important}
+#authScreen.ye-cinematic .ye-cosmos-platform{opacity:.7!important;box-shadow:0 0 22px rgba(0,248,166,.46),inset 0 0 42px rgba(0,255,166,.20),0 0 90px rgba(0,211,133,.19)!important}
