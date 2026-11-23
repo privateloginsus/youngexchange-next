@@ -3,7 +3,7 @@
   'use strict';
   const style=document.createElement('style');
   style.textContent=`
-  .ye-nexus{position:relative;isolation:isolate;overflow:hidden;min-height:290px;border:1px solid rgba(35,255,148,.22);border-radius:24px;background:radial-gradient(ellipse at 50% 60%,rgba(0,103,65,.3),transparent 56%),linear-gradient(135deg,#050d0c,#07120f 65%,#030807);display:grid;place-items:center;margin:0 0 22px;box-shadow:inset 0 0 55px #002a1b,0 12px 35px #0005}
+  .ye-nexus{position:relative;isolation:isolate;overflow:hidden;min-height:410px;border:1px solid rgba(35,255,148,.22);border-radius:24px;background:radial-gradient(ellipse at 50% 60%,rgba(0,103,65,.3),transparent 56%),linear-gradient(135deg,#050d0c,#07120f 65%,#030807);display:grid;place-items:center;margin:0 0 22px;box-shadow:inset 0 0 55px #002a1b,0 12px 35px #0005}
   .ye-nexus:before{content:'';position:absolute;inset:-30%;background:repeating-radial-gradient(ellipse at center,transparent 0 34px,rgba(0,255,138,.035) 35px 36px);animation:yeNexusFog 18s linear infinite;pointer-events:none}
   .ye-nexus-stage{position:relative;width:min(100%,420px);height:270px;perspective:850px;transform-style:preserve-3d;transform:rotateX(var(--nx,0deg)) rotateY(var(--ny,0deg));transition:transform .3s ease-out}
   .ye-nexus-glow{position:absolute;left:50%;top:52%;width:210px;height:210px;transform:translate(-50%,-50%);border-radius:50%;background:#00ff8850;filter:blur(65px);animation:yeNexusPulse 4s ease-in-out infinite}
@@ -25,7 +25,7 @@
   @keyframes yeNexusFloat{0%,100%{transform:translate(-50%,-50%) rotateY(-12deg) translateY(0)}50%{transform:translate(-50%,-50%) rotateY(12deg) translateY(-9px)}}
   @keyframes yeNexusPulse{0%,100%{opacity:.65;scale:.95}50%{opacity:1;scale:1.12}}
   @keyframes yeNexusFog{to{transform:rotate(360deg)}}
-  @media(max-width:600px){.ye-nexus{min-height:235px}.ye-nexus-stage{scale:.8}}
+  @media(max-width:600px){.ye-nexus{min-height:310px}.ye-nexus-stage{scale:.8}}
   @media(prefers-reduced-motion:reduce){.ye-nexus *, .ye-nexus:before{animation:none!important}.ye-nexus-stage{transition:none}}
   `;
   document.head.append(style);
@@ -120,6 +120,18 @@
       color:0x006a40,transparent:true,opacity:.08,depthWrite:false,side:T.DoubleSide
     }));
     mist.position.z=-3.5;scene.add(mist);
+    // Layered luminous waves behind the gemstone, with restrained animation.
+    const waveLines=[];
+    for(let j=0;j<16;j++){
+      const vertices=[];
+      for(let i=0;i<130;i++){
+        const x=(i/129-.5)*16;
+        vertices.push(new T.Vector3(x,-2.15+j*.055+Math.sin(x*.8+j*.14)*.22,-3.3));
+      }
+      const geometry=new T.BufferGeometry().setFromPoints(vertices);
+      const line=new T.Line(geometry,new T.LineBasicMaterial({color:j%3===0?0x36ffa6:0x00b978,transparent:true,opacity:.11+j*.011,depthWrite:false}));
+      scene.add(line);waveLines.push({line,j});
+    }
     const dots=new Float32Array(540);
     for(let i=0;i<dots.length;i++)dots[i]=(Math.random()-.5)*(i%3===2?5:13);
     const points=new T.BufferGeometry();points.setAttribute('position',new T.BufferAttribute(dots,3));
@@ -141,6 +153,7 @@
         shell.rotation.y=t*.19;inside.rotation.y=-t*.12;edges.rotation.y=shell.rotation.y;
         shell.position.y=inside.position.y=edges.position.y=Math.sin(t*.7)*.09;
         core.scale.setScalar(1+Math.sin(t*1.8)*.15);
+        waveLines.forEach(({line,j})=>{const a=line.geometry.attributes.position;for(let k=0;k<a.count;k++){const x=a.getX(k);a.setY(k,-2.15+j*.055+Math.sin(x*.8+j*.14+t*.48)*.22)}a.needsUpdate=true});
         rings.forEach(({pivot,node,speed,radius},i)=>{pivot.rotation.z+=speed*.016;node.position.x=Math.cos(t*(.55+i*.12))*radius;node.position.y=Math.sin(t*(.55+i*.12))*radius*.67;pivot.rotation.y+=.00028*(i+1)});
       }
       renderer.render(scene,camera);
