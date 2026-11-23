@@ -131,3 +131,32 @@ radial-gradient(1.5px 1.5px at 63% 48%,#4fffc3 95%,transparent)!important;backgr
 #authScreen.ye-cinematic .auth-box{background:linear-gradient(155deg,rgba(5,23,19,.51),rgba(0,8,7,.69))!important;backdrop-filter:blur(27px) saturate(110%)!important;-webkit-backdrop-filter:blur(27px) saturate(110%)!important;border:1px solid rgba(103,242,169,.39)!important;box-shadow:0 18px 75px rgba(0,0,0,.48),0 0 34px rgba(0,202,117,.13),inset 0 1px rgba(208,255,226,.15)!important}
 #authScreen.ye-cinematic .ye-cosmos-horizon{opacity:.72!important;filter:drop-shadow(0 -7px 20px rgba(0,217,139,.27))!important}
 #authScreen.ye-cinematic .ye-cosmos-platform{opacity:.7!important;box-shadow:0 0 22px rgba(0,248,166,.46),inset 0 0 42px rgba(0,255,166,.20),0 0 90px rgba(0,211,133,.19)!important}
+
+/* v8: no second YoungExchange wordmark above the hero; brand lives in the login. */
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark{display:none!important}
+#authScreen.ye-cinematic .ye-auth-header{justify-content:flex-end!important}
+#authScreen.ye-cinematic .ye-auth-header nav{margin-left:auto!important}
+/* Layered dark cinematic nebulae without rock/asteroid imagery. */
+#authScreen.ye-cinematic{background:
+radial-gradient(ellipse 19% 35% at 15% 43%,rgba(0,140,96,.35),transparent 95%),
+radial-gradient(ellipse 16% 42% at 83% 45%,rgba(0,179,126,.32),transparent 95%),
+radial-gradient(ellipse 42% 20% at 50% 8%,rgba(0,92,65,.44),transparent 90%),
+radial-gradient(ellipse 50% 29% at 50% 82%,rgba(0,119,83,.22),transparent 90%),
+linear-gradient(112deg,#010909 0%,#00140f 24%,#031d17 50%,#00100e 77%,#000807 100%)!important}
+#authScreen.ye-cinematic:before{inset:-14%!important;background:
+radial-gradient(ellipse 7% 37% at 16% 34%,rgba(13,245,157,.25),transparent 95%),
+radial-gradient(ellipse 10% 34% at 29% 67%,rgba(0,183,114,.20),transparent 95%),
+radial-gradient(ellipse 9% 39% at 75% 26%,rgba(0,235,155,.23),transparent 95%),
+radial-gradient(ellipse 7% 32% at 88% 65%,rgba(0,171,116,.24),transparent 95%),
+conic-gradient(from 36deg at 50% 45%,transparent 0deg,rgba(0,164,107,.09) 28deg,transparent 62deg,rgba(6,234,149,.10) 101deg,transparent 144deg,rgba(0,159,105,.08) 217deg,transparent 273deg)!important;filter:blur(33px) saturate(155%)!important;mix-blend-mode:screen!important}
+#authScreen.ye-cinematic:after{background-image:
+radial-gradient(1px 1px at 12% 24%,#d3ffed 95%,transparent),
+radial-gradient(1px 1px at 77% 17%,#5cffbd 95%,transparent),
+radial-gradient(2px 2px at 86% 76%,#e7fff8 95%,transparent),
+radial-gradient(1px 1px at 30% 81%,#aaffd3 95%,transparent),
+radial-gradient(1px 1px at 63% 48%,#4fffc3 95%,transparent),
+radial-gradient(1px 1px at 45% 33%,#d9ffec 95%,transparent)!important;background-size:173px 191px,251px 211px,307px 257px,397px 331px,461px 387px,557px 439px!important;opacity:.84!important}
+#authScreen.ye-cinematic .ye-auth-stage:before{background:radial-gradient(ellipse,rgba(0,163,92,.25),rgba(0,75,51,.12) 47%,transparent 77%)!important}
+#authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 20px rgba(0,141,85,.24))!important}
+#authScreen.ye-cinematic .ye-cosmos-horizon{opacity:.5!important}
+#authScreen.ye-cinematic .auth-box{background:linear-gradient(150deg,rgba(4,20,16,.42),rgba(0,9,8,.68))!important;backdrop-filter:blur(25px)!important;-webkit-backdrop-filter:blur(25px)!important}
