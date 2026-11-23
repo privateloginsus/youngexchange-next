@@ -59,3 +59,12 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
 }
 #authScreen.ye-cinematic .auth-box{transition:border-color .25s ease,box-shadow .25s ease!important}
 #authScreen.ye-cinematic .auth-box:focus-within{border-color:rgba(88,244,170,.55)!important;box-shadow:0 15px 45px rgba(0,0,0,.55),0 0 30px rgba(0,219,127,.16)!important}
+
+/* Requested polish: retain ALL existing captions, original login layout and functionality. */
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark{display:block!important;visibility:visible!important;color:#f5fff9!important;text-shadow:0 1px 12px rgba(0,0,0,.4)!important}
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark b{color:#12dc92!important}
+#authScreen.ye-cinematic .auth-box{background:linear-gradient(145deg,rgba(4,26,20,.61),rgba(1,14,12,.73))!important;backdrop-filter:blur(22px) saturate(115%)!important;-webkit-backdrop-filter:blur(22px) saturate(115%)!important;border:1px solid rgba(79,226,158,.38)!important;box-shadow:0 15px 44px rgba(0,0,0,.35),inset 0 1px rgba(183,255,222,.09)!important;transition:background .32s ease,border-color .32s ease,box-shadow .32s ease,transform .32s ease!important}
+#authScreen.ye-cinematic .auth-box:focus-within{background:linear-gradient(145deg,rgba(5,30,22,.67),rgba(1,16,13,.78))!important;border-color:rgba(90,241,172,.57)!important;box-shadow:0 16px 48px rgba(0,0,0,.40),0 0 24px rgba(21,201,119,.11)!important}
+#authScreen.ye-cinematic .auth-box>.muted{display:block!important;margin:0 0 10px!important;text-align:center!important;color:rgba(213,235,222,.72)!important;font-size:12px!important;line-height:1.35!important}
+#authScreen.ye-cinematic .ye-auth-credits,#authScreen.ye-cinematic .ye-auth-copyright{display:flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:6!important}
+#authScreen.ye-cinematic .ye-auth-copyright{display:block!important;text-align:center!important}
