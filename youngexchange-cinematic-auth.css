@@ -160,3 +160,10 @@ radial-gradient(1px 1px at 45% 33%,#d9ffec 95%,transparent)!important;background
 #authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 20px rgba(0,141,85,.24))!important}
 #authScreen.ye-cinematic .ye-cosmos-horizon{opacity:.5!important}
 #authScreen.ye-cinematic .auth-box{background:linear-gradient(150deg,rgba(4,20,16,.42),rgba(0,9,8,.68))!important;backdrop-filter:blur(25px)!important;-webkit-backdrop-filter:blur(25px)!important}
+
+/* v9: cinematic dark space, stronger contrast and a luminous horizon, no rocks. */
+#authScreen.ye-cinematic{background:radial-gradient(ellipse 30% 50% at 13% 43%,rgba(0,115,78,.20),transparent 90%),radial-gradient(ellipse 27% 47% at 87% 40%,rgba(0,142,99,.22),transparent 88%),radial-gradient(ellipse 36% 25% at 50% 16%,rgba(0,133,83,.25),transparent 90%),linear-gradient(115deg,#000605,#00120e 36%,#000c0a 67%,#000605)!important}
+#authScreen.ye-cinematic .ye-auth-stage:before{background:radial-gradient(ellipse,rgba(0,137,77,.17),transparent 72%)!important;filter:blur(45px)!important}
+#authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 15px rgba(0,110,64,.28))!important}
+#authScreen.ye-cinematic .ye-cosmos-platform{opacity:.8!important}
+#authScreen.ye-cinematic .auth-box{background:linear-gradient(145deg,rgba(3,19,14,.37),rgba(0,9,7,.65))!important;backdrop-filter:blur(27px) saturate(115%)!important;-webkit-backdrop-filter:blur(27px) saturate(115%)!important}
