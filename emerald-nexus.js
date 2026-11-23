@@ -69,14 +69,57 @@
     inside.scale.copy(shell.scale);group.add(inside);
     const edges=new T.LineSegments(new T.EdgesGeometry(gem),new T.LineBasicMaterial({color:0xb8ffe0,transparent:true,opacity:.7}));edges.scale.copy(shell.scale);group.add(edges);
     const core=new T.Mesh(new T.IcosahedronGeometry(.35,1),new T.MeshBasicMaterial({color:0xa3ffcb}));group.add(core);
+    
+    // Sculpted, physically shaded metal ribbons: broad silver faces, bevelled rims,
+    // luminous inlaid green tracks and moving polished orbital nodes.
     const rings=[];
+    const makeRibbon=(radius,width,depth)=>{
+      const shape=new T.Shape();
+      shape.absarc(0,0,radius+width/2,0,Math.PI*2,false);
+      const hole=new T.Path();
+      hole.absarc(0,0,radius-width/2,0,Math.PI*2,true);
+      shape.holes.push(hole);
+      const geo=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.022,bevelThickness:.018,curveSegments:128});
+      geo.center();
+      return geo;
+    };
+    const silver=new T.MeshPhysicalMaterial({
+      color:0xd8e5df,metalness:1,roughness:.115,clearcoat:1,clearcoatRoughness:.08,
+      envMapIntensity:1.5,side:T.DoubleSide
+    });
     for(let i=0;i<3;i++){
-      const pivot=new T.Group(),mat=new T.MeshStandardMaterial({color:0xc5ddd4,metalness:1,roughness:.15,emissive:0x00472a,emissiveIntensity:.45});
-      const ring=new T.Mesh(new T.TorusGeometry(2.8,.052,12,180),mat);ring.scale.y=.62;pivot.add(ring);
-      const glow=new T.Mesh(new T.TorusGeometry(2.8,.012,6,180),new T.MeshBasicMaterial({color:0x20ff9c,transparent:true,opacity:.7}));glow.scale.y=.62;glow.position.z=.04;pivot.add(glow);
-      const bead=new T.Mesh(new T.SphereGeometry(.11,16,12),new T.MeshStandardMaterial({color:0xe6fff5,metalness:.6,roughness:.1,emissive:0x00fa8b,emissiveIntensity:.6}));bead.position.x=2.8;pivot.add(bead);
-      pivot.rotation.set(.4+i*.6,.3+i*.7,i*1.1);group.add(pivot);rings.push(pivot);
+      const pivot=new T.Group();
+      const radius=2.68+i*.14;
+      const ribbon=new T.Mesh(makeRibbon(radius,.115,.035),silver.clone());
+      ribbon.scale.y=.67;
+      pivot.add(ribbon);
+      // Two precision-machined green tracks seated just above the metal face.
+      [-.044,.044].forEach(offset=>{
+        const track=new T.Mesh(
+          new T.TorusGeometry(radius+offset,.009,8,192),
+          new T.MeshBasicMaterial({color:i===1?0x5affae:0x00f98b,transparent:true,opacity:.82})
+        );
+        track.scale.y=.67;track.position.z=.055;pivot.add(track);
+      });
+      // Polished moving satellites, with luminous center and silver outer shell.
+      const node=new T.Group();
+      const ball=new T.Mesh(new T.SphereGeometry(.13,24,18),
+        new T.MeshPhysicalMaterial({color:0xeafff6,metalness:.86,roughness:.075,clearcoat:1}));
+      const center=new T.Mesh(new T.SphereGeometry(.061,16,12),
+        new T.MeshBasicMaterial({color:0x21ffa1}));
+      center.position.z=.118;
+      node.add(ball,center);
+      node.position.set(radius,0,.07);
+      pivot.add(node);
+      pivot.rotation.set(.47+i*.57,.15+i*.52,[-.58,.74,1.72][i]);
+      group.add(pivot);
+      rings.push({pivot,node,speed:[.13,-.105,.085][i],radius});
     }
+    // Floating layered emerald light, behind the metallic orbit sculpture.
+    const mist=new T.Mesh(new T.PlaneGeometry(13,7),new T.MeshBasicMaterial({
+      color:0x006a40,transparent:true,opacity:.08,depthWrite:false,side:T.DoubleSide
+    }));
+    mist.position.z=-3.5;scene.add(mist);
     const dots=new Float32Array(540);
     for(let i=0;i<dots.length;i++)dots[i]=(Math.random()-.5)*(i%3===2?5:13);
     const points=new T.BufferGeometry();points.setAttribute('position',new T.BufferAttribute(dots,3));
@@ -98,7 +141,7 @@
         shell.rotation.y=t*.19;inside.rotation.y=-t*.12;edges.rotation.y=shell.rotation.y;
         shell.position.y=inside.position.y=edges.position.y=Math.sin(t*.7)*.09;
         core.scale.setScalar(1+Math.sin(t*1.8)*.15);
-        rings.forEach((r,i)=>{r.rotation.z+=((i%2)?-1:1)*(.0025+i*.0007);r.rotation.y+=.0009*(i+1)});
+        rings.forEach(({pivot,node,speed,radius},i)=>{pivot.rotation.z+=speed*.016;node.position.x=Math.cos(t*(.55+i*.12))*radius;node.position.y=Math.sin(t*(.55+i*.12))*radius*.67;pivot.rotation.y+=.00028*(i+1)});
       }
       renderer.render(scene,camera);
     }
