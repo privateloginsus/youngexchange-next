@@ -901,7 +901,25 @@ async function yeBankRequestsAdminRender(section){
     '<p><strong>Ricevuta:</strong> '+esc(new Date(row.created_at).toLocaleString('it-IT'))+'</p>'+
     '<p><strong>Stato:</strong> '+esc(row.status==='pending'?'Da esaminare':'Esaminata')+'</p>'+
     '<p class="small">Non sono state pubblicate coordinate bancarie al cliente. Per rendere disponibili istruzioni di deposito sono necessari un conto ricevente autorizzato e la verifica della titolarità.</p>'+
+    (row.request_type==='deposit'?'<form id="yeBankDraftForm" class="mt"><h4>Bozza coordinate di incasso — solo amministrazione</h4><p class="small">La bozza non viene mostrata al cliente. Le coordinate di deposito devono appartenere a un conto autorizzato e verificato.</p><label>Intestatario verificabile<input name="beneficiary" maxlength="140" required></label><label>IBAN conto ricevente<input name="iban" maxlength="42" autocomplete="off" required></label><label>Nome banca<input name="bank_name" maxlength="140"></label><label>Codice SWIFT/BIC<input name="swift_bic" maxlength="11" autocomplete="off"></label><label>Causale o riferimento<input name="reference" maxlength="180"></label><button type="submit" class="secondary-btn">Salva bozza privata</button><p id="yeBankDraftStatus" role="status" aria-live="polite"></p></form>':'')+
     (row.status==='pending'&&row.request_type==='deposit'?'<button type="button" class="secondary-btn" id="yeBankMarkReviewed">Segna richiesta come esaminata</button>':'')+'</section>';
+   const draftForm=details.querySelector('#yeBankDraftForm');
+   if(draftForm){
+    const note=details.querySelector('#yeBankDraftStatus');
+    yeBankRequest('admin_draft_get',{user_id:row.user_id}).then(data=>{
+     if(!draftForm.isConnected)return;
+     const record=data.draft;if(record){['beneficiary','iban','bank_name','swift_bic','reference'].forEach(name=>{draftForm.elements[name].value=record[name]||''});note.textContent='Bozza esistente caricata (non visibile al cliente).'}
+    }).catch(error=>{if(draftForm.isConnected)note.textContent='Caricamento bozza non disponibile: '+(error.message||String(error))});
+    draftForm.onsubmit=async event=>{
+     event.preventDefault();const save=draftForm.querySelector('[type=submit]');save.disabled=true;note.textContent='Salvataggio della bozza privata…';
+     try{
+      const fields=Object.fromEntries(['beneficiary','iban','bank_name','swift_bic','reference'].map(name=>[name,draftForm.elements[name].value]));
+      await yeBankRequest('admin_draft_save',{user_id:row.user_id,...fields});
+      note.textContent='Bozza salvata in Supabase per questo conto. In attesa di verifica: non visibile al cliente.';
+     }catch(error){note.textContent='Salvataggio non riuscito: '+(error.message||String(error))}
+     finally{save.disabled=false}
+    };
+   }
    const confirm=details.querySelector('#yeBankMarkReviewed');
    if(confirm)confirm.onclick=async()=>{
     confirm.disabled=true;
