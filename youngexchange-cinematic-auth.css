@@ -167,3 +167,37 @@ radial-gradient(1px 1px at 45% 33%,#d9ffec 95%,transparent)!important;background
 #authScreen.ye-cinematic .ye-auth-stage canvas{filter:drop-shadow(0 0 15px rgba(0,110,64,.28))!important}
 #authScreen.ye-cinematic .ye-cosmos-platform{opacity:.8!important}
 #authScreen.ye-cinematic .auth-box{background:linear-gradient(145deg,rgba(3,19,14,.37),rgba(0,9,7,.65))!important;backdrop-filter:blur(27px) saturate(115%)!important;-webkit-backdrop-filter:blur(27px) saturate(115%)!important}
+
+/* v10: single-viewport composition. Original logo top-right, large centered emerald,
+   compact frosted login right below it, uniform footer line. No scroll on desktop. */
+#authScreen.ye-cinematic{height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;padding:12px clamp(14px,3vw,42px) 12px!important}
+#authScreen.ye-cinematic .ye-auth-header{position:static!important;flex:none!important;width:100%!important;display:flex!important;justify-content:flex-end!important;align-items:center!important;margin:0!important;z-index:5!important}
+#authScreen.ye-cinematic .ye-auth-logo{display:flex;align-items:center;gap:10px;font-family:Manrope,sans-serif;font-size:clamp(16px,1.4vw,21px);font-weight:800;letter-spacing:-.8px;color:#f0fff7;white-space:nowrap}
+#authScreen.ye-cinematic .ye-auth-logo .ye-brand-emblem{--ye-emblem-size:33px}
+#authScreen.ye-cinematic .auth-panel{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;min-height:0!important;width:min(100%,640px)!important;max-width:640px!important;margin:0 auto!important;gap:0!important;transform:none!important}
+#authScreen.ye-cinematic .ye-auth-stage{flex:1 1 auto!important;width:min(100%,640px)!important;height:auto!important;min-height:150px!important;max-height:min(46vh,480px)!important;margin:0 auto 6px!important}
+#authScreen.ye-cinematic .ye-auth-fallback{font-size:clamp(90px,24vh,150px)!important}
+#authScreen.ye-cinematic .ye-cosmos-platform{position:absolute!important;left:50%!important;top:76%!important;bottom:auto!important;width:min(560px,86%)!important;height:22%!important;transform:translate(-50%,-50%) perspective(650px) rotateX(74deg)!important}
+#authScreen.ye-cinematic .auth-box{flex:none!important;display:flex!important;flex-direction:column!important;width:min(100%,352px)!important;max-width:352px!important;margin:0 auto!important;padding:14px 20px 13px!important;border-radius:14px!important}
+#authScreen.ye-cinematic .auth-box>.eyebrow,#authScreen.ye-cinematic .auth-box>.muted{display:none!important}
+#authScreen.ye-cinematic .auth-box>h2{font-size:19px!important;margin:0!important;text-align:center!important}
+#authScreen.ye-cinematic .auth-box form{margin-top:2px!important}
+#authScreen.ye-cinematic .auth-box label{font-size:11px!important;margin:10px 0 5px!important}
+#authScreen.ye-cinematic .auth-box input{min-height:37px!important;padding:8px 11px!important;font-size:13px!important}
+#authScreen.ye-cinematic .auth-box .password-field button{top:2px!important}
+#authScreen.ye-cinematic #forgotLink{font-size:11px!important;padding:0!important}
+#authScreen.ye-cinematic #authSubmit{margin-top:14px!important;padding:11px 15px!important;font-size:14px!important}
+#authScreen.ye-cinematic .tabs{order:10!important;display:flex!important;justify-content:center!important;background:none!important;border:0!important;padding:0!important;margin:10px 0 0!important}
+#authScreen.ye-cinematic .tabs button{flex:none!important;background:none!important;border:0!important;padding:0!important;font-weight:600!important;font-size:11.5px!important;color:#93bda6!important;letter-spacing:.1px!important}
+#authScreen.ye-cinematic .tabs button:hover{color:#d6ffe9!important;background:none!important}
+#authScreen.ye-cinematic .tabs button.active{display:none!important}
+#authScreen.ye-cinematic #tabRegister::before{content:"Non hai un conto? "}
+#authScreen.ye-cinematic #tabLogin::before{content:"Hai già un conto? "}
+#authScreen.ye-cinematic .auth-note{order:11!important;margin-top:9px!important;font-size:11px!important}
+#authScreen.ye-cinematic .ye-auth-bottom{position:relative;z-index:3;flex:none;width:100%;margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+#authScreen.ye-cinematic .ye-auth-credits{position:static!important;display:flex!important;justify-content:center!important;flex-wrap:wrap!important;gap:0!important;margin:0!important;width:auto!important;max-width:none!important;padding:0!important;border:0!important;color:#9fbcab!important;font-size:11.5px!important;letter-spacing:.3px!important}
+#authScreen.ye-cinematic .ye-auth-credits span{white-space:nowrap!important;padding:0 13px!important;display:inline-block!important}
+#authScreen.ye-cinematic .ye-auth-credits span+span{border-left:1px solid rgba(146,206,172,.35)}
+#authScreen.ye-cinematic .ye-auth-copyright{margin:4px 0 0!important;width:auto!important;color:#71897c!important;font-size:10px!important}
+@media(max-width:560px){#authScreen.ye-cinematic{padding:10px 12px!important}#authScreen.ye-cinematic .ye-auth-logo{font-size:15px}#authScreen.ye-cinematic .ye-auth-logo .ye-brand-emblem{--ye-emblem-size:28px}#authScreen.ye-cinematic .ye-auth-stage{width:100%!important;height:auto!important;min-height:140px!important;max-height:40vh!important;margin-bottom:4px!important}#authScreen.ye-cinematic .auth-box{width:min(100%,340px)!important;padding:13px 15px 12px!important}#authScreen.ye-cinematic .ye-auth-credits{font-size:10px!important}#authScreen.ye-cinematic .ye-auth-credits span{padding:0 8px!important}}
+@media(max-height:540px){#authScreen.ye-cinematic{height:auto!important;max-height:none!important;min-height:100dvh!important;overflow-y:auto!important}}
