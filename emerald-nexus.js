@@ -15,9 +15,9 @@
   .ye-nexus-ring.a{animation:yeNexusOrbitA 9s linear infinite}
   .ye-nexus-ring.b{animation:yeNexusOrbitB 12s linear infinite}
   .ye-nexus-ring.c{animation:yeNexusOrbitC 15s linear infinite}
-  .ye-nexus-label{position:absolute;bottom:15px;left:0;right:0;text-align:center;color:#a2d6c0;font-size:10px;letter-spacing:.32em;text-transform:uppercase}
+
   .ye-nexus:has(canvas) .ye-nexus-stage{opacity:0;pointer-events:none}
-  .ye-nexus:has(canvas) .ye-nexus-label{z-index:3}
+
   .ye-nexus-star{position:absolute;width:3px;height:3px;border-radius:50%;background:#71ffc1;box-shadow:0 0 10px #00ff88}
   @keyframes yeNexusOrbitA{from{transform:rotate(-24deg) rotateX(68deg) rotateZ(0)}to{transform:rotate(-24deg) rotateX(68deg) rotateZ(360deg)}}
   @keyframes yeNexusOrbitB{from{transform:rotate(54deg) rotateX(72deg) rotateZ(0)}to{transform:rotate(54deg) rotateX(72deg) rotateZ(-360deg)}}
@@ -36,8 +36,8 @@
     if(root.querySelector('.ye-nexus'))return;
     const host=document.createElement('section');
     host.className='ye-nexus';
-    host.setAttribute('aria-label','Emerald Nexus, cristallo luminoso con anelli orbitanti');
-    host.innerHTML='<div class="ye-nexus-stage"><div class="ye-nexus-glow"></div><div class="ye-nexus-ring a"></div><div class="ye-nexus-ring b"></div><div class="ye-nexus-ring c"></div><div class="ye-nexus-crystal"><div class="ye-nexus-facet"></div></div><span class="ye-nexus-star" style="top:18%;left:16%"></span><span class="ye-nexus-star" style="top:76%;left:80%"></span><span class="ye-nexus-star" style="top:30%;left:85%"></span></div><div class="ye-nexus-label">Emerald Nexus · YoungExchange</div>';
+    host.setAttribute('aria-label','Cristallo verde luminoso con anelli metallici orbitanti');
+    host.innerHTML='<div class="ye-nexus-stage"><div class="ye-nexus-glow"></div><div class="ye-nexus-ring a"></div><div class="ye-nexus-ring b"></div><div class="ye-nexus-ring c"></div><div class="ye-nexus-crystal"><div class="ye-nexus-facet"></div></div><span class="ye-nexus-star" style="top:18%;left:16%"></span><span class="ye-nexus-star" style="top:76%;left:80%"></span><span class="ye-nexus-star" style="top:30%;left:85%"></span></div>';
     root.prepend(host);
     enhanceWebGL(host);
     const stage=host.querySelector('.ye-nexus-stage');
