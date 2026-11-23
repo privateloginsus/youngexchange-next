@@ -30,3 +30,16 @@
 #appScreen .main{width:100%!important;margin:0!important;padding:0!important}
 #appScreen .main .page-content{padding:14px 12px!important}
 }
+
+/* Executive refinement: understated, professional horizontal navigation */
+#appScreen .sidebar{background:linear-gradient(100deg,rgba(3,12,10,.97),rgba(5,18,15,.94) 50%,rgba(2,10,8,.97))!important;border-bottom:1px solid rgba(128,185,158,.19)!important;box-shadow:0 10px 30px rgba(0,0,0,.26)!important;min-height:76px!important}
+#appScreen .sidebar #nav>a{position:relative!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:13px clamp(9px,1vw,16px)!important;color:#c6d5ce!important;font-weight:550!important;letter-spacing:.01em!important}
+#appScreen .sidebar #nav>a span{color:#a9c1b4!important;font-size:16px!important;opacity:.85!important}
+#appScreen .sidebar #nav>a:after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:1.5px;background:linear-gradient(90deg,transparent,#55dca1,transparent);opacity:0;transform:scaleX(.4);transition:opacity .22s,transform .22s}
+#appScreen .sidebar #nav>a:hover,#appScreen .sidebar #nav>a:focus-visible{background:rgba(88,166,126,.055)!important;border:0!important;color:#fff!important}
+#appScreen .sidebar #nav>a.active{background:transparent!important;border:0!important;color:#f4fff8!important;box-shadow:none!important}
+#appScreen .sidebar #nav>a.active:after{opacity:1;transform:scaleX(1)}
+#appScreen .sidebar #nav>a.active span{color:#75e0ae!important;opacity:1!important}
+#appScreen .main .page-content{max-width:1800px!important;margin-left:auto!important;margin-right:auto!important}
+#appScreen .main .topbar{border-bottom-color:rgba(120,183,150,.14)!important}
+@media(max-width:800px){#appScreen .sidebar{min-height:0!important}#appScreen .sidebar #nav>a{padding:10px 12px!important}#appScreen .sidebar #nav>a:after{left:12px;right:12px}}
