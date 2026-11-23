@@ -1,0 +1,51 @@
+/* YoungExchange identity motion — logo only; favicon remains static */
+.ye-brand-emblem{
+  --ye-emblem-size:39px;
+  position:relative;isolation:isolate;flex:none;display:inline-grid;place-items:center;
+  width:var(--ye-emblem-size);height:var(--ye-emblem-size);
+  background:linear-gradient(145deg,#13231d 0%,#050b09 31%,#010604 100%);
+  border:1px solid rgba(98,245,183,.35);border-radius:24%;
+  color:#2eeda5;font:900 calc(var(--ye-emblem-size)*.64)/1 Arial,Helvetica,sans-serif;
+  letter-spacing:-.055em;box-shadow:inset 0 1px 0 rgba(209,255,230,.10),inset 0 -6px 16px rgba(0,0,0,.65),0 0 15px rgba(0,224,138,.13);
+  overflow:visible;transform:translateZ(0);vertical-align:middle;
+}
+.ye-brand-emblem .ye-brand-letter{position:relative;z-index:3;line-height:1;color:#35edaa;filter:drop-shadow(0 0 5px rgba(42,238,165,.24));animation:ye-letter-breathe 5s ease-in-out infinite}
+.ye-brand-emblem::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.4px;z-index:2;pointer-events:none;
+  background:conic-gradient(from var(--ye-sweep-angle,10deg),transparent 0 55%,rgba(44,242,169,.05) 66%,#66ffd0 76%,rgba(44,242,169,.14) 83%,transparent 92%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:ye-rim-sweep 6.8s linear infinite;
+}
+.ye-brand-emblem::after{content:"";position:absolute;inset:-8%;z-index:-1;border-radius:30%;pointer-events:none;
+  box-shadow:0 0 17px rgba(29,244,153,.17),0 0 34px rgba(29,244,153,.06);animation:ye-aura 5.6s ease-in-out infinite;
+}
+@property --ye-sweep-angle{syntax:"<angle>";initial-value:10deg;inherits:false}
+@keyframes ye-rim-sweep{to{--ye-sweep-angle:370deg}}
+@keyframes ye-letter-breathe{0%,100%{filter:drop-shadow(0 0 4px rgba(42,238,165,.19));opacity:.92}50%{filter:drop-shadow(0 0 13px rgba(42,238,165,.62));opacity:1}}
+@keyframes ye-aura{0%,100%{opacity:.48;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
+#authScreen .brand .ye-brand-emblem,#authScreen .mobile-brand .ye-brand-emblem{--ye-emblem-size:39px}
+#authScreen .brand,#authScreen .mobile-brand{position:relative;z-index:3}
+.ye-hero-brand{display:grid!important;place-items:center!important;position:relative!important;isolation:isolate;
+  width:min(355px,90%);height:285px;margin:12px auto 16px;pointer-events:none;overflow:visible!important}
+.ye-hero-brand::before,.ye-hero-brand::after{content:"";position:absolute;width:255px;height:255px;border:1px solid rgba(59,237,159,.18);border-radius:50%;
+ box-shadow:0 0 25px rgba(23,225,139,.05);animation:ye-orbit-drift 15s linear infinite}
+.ye-hero-brand::after{width:308px;height:176px;transform:rotate(-28deg);animation:ye-orbit-tilt 11s ease-in-out infinite;border-color:rgba(74,240,180,.14)}
+.ye-hero-brand .ye-brand-emblem{--ye-emblem-size:165px;z-index:2;box-shadow:0 0 42px rgba(22,222,132,.19),0 0 85px rgba(22,222,132,.08),inset 0 1px 1px rgba(221,255,236,.2),inset 0 -14px 32px rgba(0,0,0,.7);animation:ye-hero-float 6s ease-in-out infinite}
+.ye-hero-brand .ye-brand-emblem::before{padding:2.2px}
+.ye-hero-brand .ye-brand-emblem::after{inset:-18%}
+.ye-hero-brand .ye-spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#69ffca;box-shadow:0 0 9px #46f6b1;animation:ye-spark 5s ease-in-out infinite;opacity:.5}
+.ye-hero-brand .ye-spark.a{top:17%;left:14%}
+.ye-hero-brand .ye-spark.b{top:78%;right:11%;animation-delay:-1.6s}
+.ye-hero-brand .ye-spark.c{top:11%;right:24%;animation-delay:-3.4s}
+@keyframes ye-orbit-drift{to{transform:rotate(360deg)}}
+@keyframes ye-orbit-tilt{50%{transform:rotate(-18deg) scale(1.03)}}
+@keyframes ye-hero-float{0%,100%{transform:translateY(3px)}50%{transform:translateY(-5px)}}
+@keyframes ye-spark{0%,100%{opacity:.18;transform:scale(.55)}50%{opacity:.85;transform:scale(1.7)}}
+#appScreen .side-brand .ye-brand-emblem{--ye-emblem-size:53px;display:inline-grid!important;border-radius:23%!important;
+ background:linear-gradient(145deg,#102119,#020905 72%)!important;border:1px solid rgba(53,237,170,.45)!important;
+ color:#35edaa!important;animation:ye-inside-float 5s ease-in-out infinite!important;
+ box-shadow:0 0 12px rgba(18,242,148,.3),0 0 28px rgba(18,242,148,.09),inset 0 1px 1px rgba(220,255,238,.12)!important}
+@keyframes ye-inside-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+#appScreen a.side-brand:hover .ye-brand-emblem{filter:brightness(1.15);transform:scale(1.035)!important}
+@media(max-width:800px){.ye-hero-brand{height:215px;width:100%}.ye-hero-brand .ye-brand-emblem{--ye-emblem-size:120px}.ye-hero-brand::before{width:200px;height:200px}.ye-hero-brand::after{width:230px;height:138px}#appScreen .side-brand .ye-brand-emblem{--ye-emblem-size:45px}}
+@media(prefers-reduced-motion:reduce){.ye-brand-emblem,.ye-brand-emblem::before,.ye-brand-emblem::after,.ye-brand-letter,.ye-hero-brand::before,.ye-hero-brand::after,.ye-hero-brand .ye-spark{animation:none!important;transition:none!important}}
