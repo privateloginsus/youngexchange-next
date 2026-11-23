@@ -15,9 +15,39 @@ const shade=tones[(f*11+i*7+j*3)%tones.length];emit(p,q,t,shade);
 if(i+j<n-1){const z=interpolate(...v,(i+1)/n,(j+1)/n);emit(q,z,t,tones[(f*13+i*5+j*9+3)%tones.length])}
 }}
 const cut=new T.BufferGeometry();cut.setAttribute('position',new T.Float32BufferAttribute(xyz,3));cut.setAttribute('color',new T.Float32BufferAttribute(rgb,3));cut.computeVertexNormals();
-const shell=new T.Mesh(cut,new T.MeshPhongMaterial({color:0xffffff,vertexColors:true,shininess:100,specular:0x36a779,flatShading:true,side:T.DoubleSide}));gem.add(shell);
+/* Optical emerald shader: deep absorption, refractive-looking internal inclusions,
+   angular facet highlights and dark green body. Keeps Ethereum geometry. */
+const gemUniforms={uTime:{value:0}};
+const optical=new T.ShaderMaterial({uniforms:gemUniforms,vertexColors:true,side:T.DoubleSide,
+vertexShader:`
+varying vec3 vPos;varying vec3 vNormal;varying vec3 vColor;varying vec3 vEye;
+void main(){vPos=position;vColor=color;vec4 mv=modelViewMatrix*vec4(position,1.);vEye=normalize(-mv.xyz);vNormal=normalize(normalMatrix*normal);gl_Position=projectionMatrix*mv;}
+`,
+fragmentShader:`
+precision highp float;
+uniform float uTime;varying vec3 vPos;varying vec3 vNormal;varying vec3 vColor;varying vec3 vEye;
+float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
+float veins(vec3 p){vec3 q=p*5.8;float a=sin(q.x*2.7+sin(q.z*2.4))*sin(q.y*3.1-q.z*1.9);float b=sin(q.x*6.1+q.y*2.9-q.z*4.2);return pow(max(0.,a*b),7.);}
+void main(){
+ vec3 n=normalize(vNormal),v=normalize(vEye);
+ float ndv=abs(dot(n,v));
+ float edge=pow(1.-ndv,2.7);
+ vec3 p=vPos+refract(-v,n,.66)*.38;
+ float inclusion=veins(p)+.65*veins(p*1.75+vec3(1.1,2.2,.4));
+ float fracture=pow(max(0.,sin(dot(p,vec3(17.3,9.4,12.8))+sin(p.y*24.))),15.);
+ float angular=pow(max(dot(reflect(-normalize(vec3(-.4,.8,1.)),n),v),0.),64.);
+ float side=pow(max(dot(reflect(-normalize(vec3(.8,.3,.5)),n),v),0.),110.);
+ float body=.38+.56*ndv;
+ vec3 base=vColor*vec3(.18,.72,.47)*body;
+ base+=vec3(.004,.12,.065)*inclusion+vec3(.006,.17,.075)*fracture*.33;
+ base+=vec3(.02,.48,.24)*edge*.66;
+ base+=vec3(.47,1.,.78)*angular*.48+vec3(.18,.8,.53)*side*.28;
+ base+=vec3(.002,.045,.021)*sin(uTime*.7)*.2;
+ gl_FragColor=vec4(clamp(base,0.,.93),1.);
+}`});
+const shell=new T.Mesh(cut,optical);gem.add(shell);
 const rim=new T.LineSegments(new T.EdgesGeometry(new T.OctahedronGeometry(1.75,0),1),new T.LineBasicMaterial({color:0x3cf1a1,transparent:true,opacity:.38}));rim.scale.set(.89,1.28,.89);gem.add(rim);
 const caustics=new T.Mesh(new T.OctahedronGeometry(1.62,0),new T.MeshBasicMaterial({color:0x00c67a,transparent:true,opacity:.08,depthWrite:false,side:T.BackSide}));caustics.scale.set(.89,1.28,.89);gem.add(caustics);
-const silver=new T.MeshPhysicalMaterial({color:0xe9f7f0,metalness:.7,roughness:.075,clearcoat:1,clearcoatRoughness:.06,side:T.DoubleSide});const rings=[];for(let i=0;i<3;i++){const orbit=new T.Group();const radius=2.35+i*.12;const band=new T.Mesh(new T.TorusGeometry(radius,.045,14,180),silver);band.scale.y=.57;orbit.add(band);const inset=new T.Mesh(new T.TorusGeometry(radius,.009,8,180),new T.MeshBasicMaterial({color:0x59ffc1,transparent:true,opacity:.68}));inset.scale.y=.57;inset.position.z=.04;orbit.add(inset);const satellite=new T.Mesh(new T.SphereGeometry(.12,28,20),new T.MeshPhysicalMaterial({color:0xf4fff9,metalness:.7,roughness:.06,clearcoat:1}));orbit.add(satellite);orbit.rotation.set(.3+i*.58,.22+i*.44,[-.45,.65,1.7][i]);group.add(orbit);rings.push({orbit,satellite,radius,speed:[.18,-.13,.105][i]})}
-const dustPositions=new Float32Array(270);for(let i=0;i<dustPositions.length;i++)dustPositions[i]=(Math.random()-.5)*(i%3===2?5:10);const dust=new T.BufferGeometry();dust.setAttribute('position',new T.BufferAttribute(dustPositions,3));scene.add(new T.Points(dust,new T.PointsMaterial({color:0x79ffd0,size:.025,transparent:true,opacity:.7})));const fallback=stage.querySelector('.ye-auth-fallback');let frame=0;const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;const clock=new T.Clock();const resize=()=>{const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w<360?14:10.8;camera.updateProjectionMatrix()};const ro=new ResizeObserver(resize);ro.observe(stage);resize();let hasRendered=false;renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();fallback.hidden=false;renderer.domElement.style.display='none';cancelAnimationFrame(frame)},{once:true});function render(){if(!stage.isConnected){cancelAnimationFrame(frame);ro.disconnect();renderer.dispose();return}frame=requestAnimationFrame(render);if(root.hidden||document.hidden)return;const t=clock.getElapsedTime();if(!reduced){smoothX+=(pointer.x-smoothX)*.035;smoothY+=(pointer.y-smoothY)*.035;group.rotation.y=smoothX*.18;group.rotation.x=-smoothY*.11;gem.rotation.y=t*.16;gem.rotation.z=Math.sin(t*.24)*.05;gem.position.y=Math.sin(t*.7)*.09;rings.forEach(({orbit,satellite,radius,speed},i)=>{orbit.rotation.z+=speed*.009;satellite.position.set(Math.cos(t*(.55+i*.13))*radius,Math.sin(t*(.55+i*.13))*radius*.57,.08)})}try{renderer.render(scene,camera);if(!hasRendered){hasRendered=true;fallback.hidden=true}}catch(e){fallback.hidden=false;renderer.domElement.style.display='none';cancelAnimationFrame(frame)}}render()}
+const silver=new T.MeshPhysicalMaterial({color:0xaac9ba,metalness:.95,roughness:.11,clearcoat:1,clearcoatRoughness:.06,side:T.DoubleSide});const rings=[];for(let i=0;i<3;i++){const orbit=new T.Group();const radius=2.35+i*.12;const band=new T.Mesh(new T.TorusGeometry(radius,.045,14,180),silver);band.scale.y=.57;orbit.add(band);const inset=new T.Mesh(new T.TorusGeometry(radius,.009,8,180),new T.MeshBasicMaterial({color:0x59ffc1,transparent:true,opacity:.68}));inset.scale.y=.57;inset.position.z=.04;orbit.add(inset);const satellite=new T.Mesh(new T.SphereGeometry(.12,28,20),new T.MeshPhysicalMaterial({color:0xf4fff9,metalness:.7,roughness:.06,clearcoat:1}));orbit.add(satellite);orbit.rotation.set(.3+i*.58,.22+i*.44,[-.45,.65,1.7][i]);group.add(orbit);rings.push({orbit,satellite,radius,speed:[.18,-.13,.105][i]})}
+const dustPositions=new Float32Array(270);for(let i=0;i<dustPositions.length;i++)dustPositions[i]=(Math.random()-.5)*(i%3===2?5:10);const dust=new T.BufferGeometry();dust.setAttribute('position',new T.BufferAttribute(dustPositions,3));scene.add(new T.Points(dust,new T.PointsMaterial({color:0x79ffd0,size:.025,transparent:true,opacity:.7})));const fallback=stage.querySelector('.ye-auth-fallback');let frame=0;const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;const clock=new T.Clock();const resize=()=>{const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w<360?14:10.8;camera.updateProjectionMatrix()};const ro=new ResizeObserver(resize);ro.observe(stage);resize();let hasRendered=false;renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();fallback.hidden=false;renderer.domElement.style.display='none';cancelAnimationFrame(frame)},{once:true});function render(){if(!stage.isConnected){cancelAnimationFrame(frame);ro.disconnect();renderer.dispose();return}frame=requestAnimationFrame(render);if(root.hidden||document.hidden)return;const t=clock.getElapsedTime();gemUniforms.uTime.value=t;if(!reduced){smoothX+=(pointer.x-smoothX)*.035;smoothY+=(pointer.y-smoothY)*.035;group.rotation.y=smoothX*.18;group.rotation.x=-smoothY*.11;gem.rotation.y=t*.16;gem.rotation.z=Math.sin(t*.24)*.05;gem.position.y=Math.sin(t*.7)*.09;rings.forEach(({orbit,satellite,radius,speed},i)=>{orbit.rotation.z+=speed*.009;satellite.position.set(Math.cos(t*(.55+i*.13))*radius,Math.sin(t*(.55+i*.13))*radius*.57,.08)})}try{renderer.render(scene,camera);if(!hasRendered){hasRendered=true;fallback.hidden=true}}catch(e){fallback.hidden=false;renderer.domElement.style.display='none';cancelAnimationFrame(frame)}}render()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()})();
