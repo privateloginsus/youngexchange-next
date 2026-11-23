@@ -51,3 +51,11 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
 @media(max-height:760px){#authScreen.ye-cinematic .ye-auth-stage{height:clamp(100px,23dvh,185px)!important}#authScreen.ye-cinematic .auth-box{padding:10px 17px!important}#authScreen.ye-cinematic .auth-box .tabs{margin-bottom:5px!important}#authScreen.ye-cinematic .auth-panel{justify-content:flex-end!important}}
 @media(max-width:600px){#authScreen.ye-cinematic .auth-panel{width:min(100%,350px)!important}#authScreen.ye-cinematic .ye-auth-stage{height:clamp(115px,25dvh,205px)!important}#authScreen.ye-cinematic .ye-auth-credits{font-size:8px!important;gap:4px 8px!important}}
 @media(max-height:580px){#authScreen.ye-cinematic:not([hidden]){height:auto!important;min-height:100dvh!important;overflow-y:auto!important}#authScreen.ye-cinematic .auth-panel{flex:0 0 auto!important}#authScreen.ye-cinematic .ye-auth-stage{height:110px!important}}
+
+/* Approved refinement: preserve original single-column login, only widen by ~17%. */
+@media(min-width:601px){
+ #authScreen.ye-cinematic .auth-panel{width:min(calc(100vw - 40px),456px)!important;max-width:456px!important}
+ #authScreen.ye-cinematic .auth-box{width:100%!important;max-width:456px!important}
+}
+#authScreen.ye-cinematic .auth-box{transition:border-color .25s ease,box-shadow .25s ease!important}
+#authScreen.ye-cinematic .auth-box:focus-within{border-color:rgba(88,244,170,.55)!important;box-shadow:0 15px 45px rgba(0,0,0,.55),0 0 30px rgba(0,219,127,.16)!important}
