@@ -4,164 +4,94 @@
   const style=document.createElement('style');
   style.textContent=`
   .ye-nexus{position:relative;isolation:isolate;overflow:hidden;min-height:410px;border:1px solid rgba(35,255,148,.22);border-radius:24px;background:radial-gradient(ellipse at 50% 60%,rgba(0,103,65,.3),transparent 56%),linear-gradient(135deg,#050d0c,#07120f 65%,#030807);display:grid;place-items:center;margin:0 0 22px;box-shadow:inset 0 0 55px #002a1b,0 12px 35px #0005}
-  .ye-nexus:before{content:'';position:absolute;inset:-30%;background:repeating-radial-gradient(ellipse at center,transparent 0 34px,rgba(0,255,138,.035) 35px 36px);animation:yeNexusFog 18s linear infinite;pointer-events:none}
-  .ye-nexus-stage{position:relative;width:min(100%,420px);height:270px;perspective:850px;transform-style:preserve-3d;transform:rotateX(var(--nx,0deg)) rotateY(var(--ny,0deg));transition:transform .3s ease-out}
-  .ye-nexus-glow{position:absolute;left:50%;top:52%;width:210px;height:210px;transform:translate(-50%,-50%);border-radius:50%;background:#00ff8850;filter:blur(65px);animation:yeNexusPulse 4s ease-in-out infinite}
-  .ye-nexus-crystal{position:absolute;left:50%;top:50%;width:125px;height:174px;transform:translate(-50%,-50%);transform-style:preserve-3d;filter:drop-shadow(0 0 16px #00ff88);animation:yeNexusFloat 6s ease-in-out infinite}
-  .ye-nexus-facet{position:absolute;inset:0;clip-path:polygon(50% 0,100% 42%,50% 100%,0 42%);background:linear-gradient(130deg,#d7ffe7 0%,#13ff9b 14%,#004b36 38%,#09e887 55%,#002c23 80%,#9bffd0 100%);border:1px solid #88ffd2}
-  .ye-nexus-facet:before{content:'';position:absolute;inset:0;clip-path:polygon(50% 0,50% 100%,0 42%);background:linear-gradient(135deg,#b6ffe6,#00a66c 55%,#003d31);opacity:.78}
-  .ye-nexus-facet:after{content:'';position:absolute;inset:0;clip-path:polygon(50% 0,100% 42%,50% 43%);background:#baffdb88}
-  .ye-nexus-ring{position:absolute;left:50%;top:50%;width:285px;height:108px;margin-left:-142.5px;margin-top:-54px;border:5px solid #b8d8cc;border-left-color:#00f58b;border-bottom-color:#066d51;border-radius:50%;box-shadow:0 0 12px #00ff8877,inset 0 0 9px #00ff8855;transform-style:preserve-3d}
-  .ye-nexus-ring.a{animation:yeNexusOrbitA 9s linear infinite}
-  .ye-nexus-ring.b{animation:yeNexusOrbitB 12s linear infinite}
-  .ye-nexus-ring.c{animation:yeNexusOrbitC 15s linear infinite}
-
-  .ye-nexus:has(canvas) .ye-nexus-stage{opacity:0;pointer-events:none}
-
-  .ye-nexus-star{position:absolute;width:3px;height:3px;border-radius:50%;background:#71ffc1;box-shadow:0 0 10px #00ff88}
-  @keyframes yeNexusOrbitA{from{transform:rotate(-24deg) rotateX(68deg) rotateZ(0)}to{transform:rotate(-24deg) rotateX(68deg) rotateZ(360deg)}}
-  @keyframes yeNexusOrbitB{from{transform:rotate(54deg) rotateX(72deg) rotateZ(0)}to{transform:rotate(54deg) rotateX(72deg) rotateZ(-360deg)}}
-  @keyframes yeNexusOrbitC{from{transform:rotate(114deg) rotateX(65deg) rotateZ(0)}to{transform:rotate(114deg) rotateX(65deg) rotateZ(360deg)}}
-  @keyframes yeNexusFloat{0%,100%{transform:translate(-50%,-50%) rotateY(-12deg) translateY(0)}50%{transform:translate(-50%,-50%) rotateY(12deg) translateY(-9px)}}
-  @keyframes yeNexusPulse{0%,100%{opacity:.65;scale:.95}50%{opacity:1;scale:1.12}}
-  @keyframes yeNexusFog{to{transform:rotate(360deg)}}
-  @media(max-width:600px){.ye-nexus{min-height:310px}.ye-nexus-stage{scale:.8}}
-  @media(prefers-reduced-motion:reduce){.ye-nexus *, .ye-nexus:before{animation:none!important}.ye-nexus-stage{transition:none}}
+  .ye-nexus canvas{width:100%!important;height:100%!important;display:block}
   `;
-  document.head.append(style);
+  document.head.appendChild(style);
+
   function mount(){
-    const app=document.getElementById('appScreen');
-    const root=document.getElementById('pageContent');
-    if(!app||app.hidden||!root||location.hash.replace('#','').split('?')[0]!=='dashboard')return;
-    if(root.querySelector('.ye-nexus'))return;
-    const host=document.createElement('section');
-    host.className='ye-nexus';
-    host.setAttribute('aria-label','Cristallo verde luminoso con anelli metallici orbitanti');
-    host.innerHTML='<div class="ye-nexus-stage"><div class="ye-nexus-glow"></div><div class="ye-nexus-ring a"></div><div class="ye-nexus-ring b"></div><div class="ye-nexus-ring c"></div><div class="ye-nexus-crystal"><div class="ye-nexus-facet"></div></div><span class="ye-nexus-star" style="top:18%;left:16%"></span><span class="ye-nexus-star" style="top:76%;left:80%"></span><span class="ye-nexus-star" style="top:30%;left:85%"></span></div>';
-    root.prepend(host);
-    enhanceWebGL(host);
-    const stage=host.querySelector('.ye-nexus-stage');
-    host.addEventListener('pointermove',e=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const r=host.getBoundingClientRect();stage.style.setProperty('--ny',((e.clientX-r.left)/r.width-.5)*12+'deg');stage.style.setProperty('--nx',(-((e.clientY-r.top)/r.height-.5)*9)+'deg')});
-    host.addEventListener('pointerleave',()=>{stage.style.setProperty('--ny','0deg');stage.style.setProperty('--nx','0deg')});
+    const host=document.querySelector('.ye-nexus')||document.querySelector('[class*="nexus"]');
+    if(!host||host.querySelector('canvas'))return;
+    const canvas=document.createElement('canvas');
+    host.innerHTML='';
+    host.appendChild(canvas);
+    init(canvas);
   }
 
-  // WebGL upgrade: glass crystal and silver rings, with the CSS scene as fallback.
-  function enhanceWebGL(host){
-    if(!window.THREE || host.querySelector('canvas'))return;
-    const T=window.THREE;
-    let renderer;
-    try{renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'high-performance'})}catch(e){return}
-    const scene=new T.Scene(),camera=new T.PerspectiveCamera(40,1,.1,50);
-    camera.position.z=10.5;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));
-    renderer.outputColorSpace=T.SRGBColorSpace;
-    renderer.toneMapping=T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.65;
-    renderer.domElement.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none';
-    host.append(renderer.domElement);
-    const ambient=new T.AmbientLight(0x99ffdd,1.8);scene.add(ambient);
-    [[0x00ff88,95,3,2,4],[0xe0fff2,75,-4,3,2],[0x00aa77,65,-3,-2,-1]].forEach(v=>{const p=new T.PointLight(v[0],v[1],30);p.position.set(v[2],v[3],v[4]);scene.add(p)});
-    const group=new T.Group();scene.add(group);
-    const gem=new T.OctahedronGeometry(1.6);
-    const shell=new T.Mesh(gem,new T.MeshPhysicalMaterial({color:0x0cff94,metalness:.05,roughness:.06,transmission:.65,thickness:1.5,ior:1.65,clearcoat:1,flatShading:true,transparent:true,opacity:.94,side:T.DoubleSide}));
-    shell.scale.set(.9,1.23,.9);group.add(shell);
-    const inside=new T.Mesh(new T.OctahedronGeometry(1.2),new T.MeshPhysicalMaterial({color:0x00a65e,emissive:0x00834c,emissiveIntensity:.7,metalness:.4,roughness:.16,transparent:true,opacity:.75,flatShading:true,side:T.DoubleSide}));
-    inside.scale.copy(shell.scale);group.add(inside);
-    const edges=new T.LineSegments(new T.EdgesGeometry(gem),new T.LineBasicMaterial({color:0xb8ffe0,transparent:true,opacity:.7}));edges.scale.copy(shell.scale);group.add(edges);
-    const core=new T.Mesh(new T.IcosahedronGeometry(.35,1),new T.MeshBasicMaterial({color:0xa3ffcb}));group.add(core);
-    
-    // Sculpted, physically shaded metal ribbons: broad silver faces, bevelled rims,
-    // luminous inlaid green tracks and moving polished orbital nodes.
-    const rings=[];
-    const makeRibbon=(radius,width,depth)=>{
-      const shape=new T.Shape();
-      shape.absarc(0,0,radius+width/2,0,Math.PI*2,false);
-      const hole=new T.Path();
-      hole.absarc(0,0,radius-width/2,0,Math.PI*2,true);
-      shape.holes.push(hole);
-      const geo=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.022,bevelThickness:.018,curveSegments:128});
-      geo.center();
-      return geo;
-    };
-    const silver=new T.MeshPhysicalMaterial({
-      color:0xd8e5df,metalness:1,roughness:.115,clearcoat:1,clearcoatRoughness:.08,
-      envMapIntensity:1.5,side:T.DoubleSide
+  function init(canvas){
+    if(!window.THREE)return;
+    const R=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+    R.setPixelRatio(Math.min(devicePixelRatio,2));
+    const sc=new THREE.Scene();
+    const cam=new THREE.PerspectiveCamera(35,1,.1,50);
+    cam.position.set(0,0.2,8);
+    const root=new THREE.Group();sc.add(root);
+
+    // Ultra-realistic emerald crystal
+    const geo=new THREE.OctahedronGeometry(1.4,1);
+    const mat=new THREE.MeshPhysicalMaterial({
+      color:0x12dc92,metalness:0.1,roughness:0.05,transmission:0.7,thickness:1.2,
+      ior:1.6,clearcoat:1,transparent:true,opacity:0.95,flatShading:false
     });
-    for(let i=0;i<3;i++){
-      const pivot=new T.Group();
-      const radius=2.68+i*.14;
-      const ribbon=new T.Mesh(makeRibbon(radius,.115,.035),silver.clone());
-      ribbon.scale.y=.67;
-      pivot.add(ribbon);
-      // Two precision-machined green tracks seated just above the metal face.
-      [-.044,.044].forEach(offset=>{
-        const track=new T.Mesh(
-          new T.TorusGeometry(radius+offset,.009,8,192),
-          new T.MeshBasicMaterial({color:i===1?0x5affae:0x00f98b,transparent:true,opacity:.82})
-        );
-        track.scale.y=.67;track.position.z=.055;pivot.add(track);
+    const crystal=new THREE.Mesh(geo,mat);
+    crystal.scale.set(0.85,1.15,0.85);
+    root.add(crystal);
+
+    // Minimalist ETH symbol inside crystal
+    const ethGeo=new THREE.PlaneGeometry(0.6,0.6);
+    const ethMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.85,side:THREE.DoubleSide});
+    const eth=new THREE.Mesh(ethGeo,ethMat);
+    eth.position.z=0.1;
+    root.add(eth);
+    const c=document.createElement('canvas');c.width=128;c.height=128;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#fff';
+    ctx.font='bold 72px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('◆',64,64);
+    ethMat.map=new THREE.CanvasTexture(c);
+
+    // Orbiting crypto meteorites
+    const cryptos=['BTC','ETH','SOL','XRP','ADA','DOT'];
+    const orbiters=[];
+    cryptos.forEach((sym,i)=>{
+      const g=new THREE.Group();
+      const size=0.18+Math.random()*0.08;
+      const m=new THREE.Mesh(new THREE.SphereGeometry(size,12,8),new THREE.MeshPhysicalMaterial({
+        color:0x19e68c,metalness:0.6,roughness:0.2,emissive:0x0a5,emissiveIntensity:0.3
+      }));
+      g.add(m);
+      const lc=document.createElement('canvas');lc.width=128;lc.height=64;
+      const lctx=lc.getContext('2d');
+      lctx.fillStyle='#eafff4';lctx.font='bold 28px Inter,sans-serif';
+      lctx.textAlign='center';lctx.fillText(sym,64,40);
+      const lm=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true}));
+      lm.scale.set(0.6,0.3,1);
+      lm.position.y=size+0.25;
+      g.add(lm);
+      root.add(g);
+      orbiters.push({g, r:2.2+i*0.35, a:i*1.1, spd:0.4+i*0.05, y:(Math.random()-.5)*1.2});
+    });
+
+    function resize(){
+      const w=canvas.clientWidth||600,h=canvas.clientHeight||400;
+      R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();
+    }
+    resize();addEventListener('resize',resize);
+    let t=0;
+    function loop(){
+      requestAnimationFrame(loop);t+=0.01;
+      crystal.rotation.y=t*0.4;
+      orbiters.forEach(o=>{
+        o.a+=o.spd*0.01;
+        o.g.position.x=Math.cos(o.a)*o.r;
+        o.g.position.z=Math.sin(o.a)*o.r;
+        o.g.position.y=o.y+Math.sin(o.a*0.5)*0.3;
       });
-      // Polished moving satellites, with luminous center and silver outer shell.
-      const node=new T.Group();
-      const ball=new T.Mesh(new T.SphereGeometry(.13,24,18),
-        new T.MeshPhysicalMaterial({color:0xeafff6,metalness:.86,roughness:.075,clearcoat:1}));
-      const center=new T.Mesh(new T.SphereGeometry(.061,16,12),
-        new T.MeshBasicMaterial({color:0x21ffa1}));
-      center.position.z=.118;
-      node.add(ball,center);
-      node.position.set(radius,0,.07);
-      pivot.add(node);
-      pivot.rotation.set(.47+i*.57,.15+i*.52,[-.58,.74,1.72][i]);
-      group.add(pivot);
-      rings.push({pivot,node,speed:[.13,-.105,.085][i],radius});
+      R.render(sc,cam);
     }
-    // Floating layered emerald light, behind the metallic orbit sculpture.
-    const mist=new T.Mesh(new T.PlaneGeometry(13,7),new T.MeshBasicMaterial({
-      color:0x006a40,transparent:true,opacity:.08,depthWrite:false,side:T.DoubleSide
-    }));
-    mist.position.z=-3.5;scene.add(mist);
-    // Layered luminous waves behind the gemstone, with restrained animation.
-    const waveLines=[];
-    for(let j=0;j<16;j++){
-      const vertices=[];
-      for(let i=0;i<130;i++){
-        const x=(i/129-.5)*16;
-        vertices.push(new T.Vector3(x,-2.15+j*.055+Math.sin(x*.8+j*.14)*.22,-3.3));
-      }
-      const geometry=new T.BufferGeometry().setFromPoints(vertices);
-      const line=new T.Line(geometry,new T.LineBasicMaterial({color:j%3===0?0x36ffa6:0x00b978,transparent:true,opacity:.11+j*.011,depthWrite:false}));
-      scene.add(line);waveLines.push({line,j});
-    }
-    const dots=new Float32Array(540);
-    for(let i=0;i<dots.length;i++)dots[i]=(Math.random()-.5)*(i%3===2?5:13);
-    const points=new T.BufferGeometry();points.setAttribute('position',new T.BufferAttribute(dots,3));
-    scene.add(new T.Points(points,new T.PointsMaterial({color:0x4dffb5,size:.028,transparent:true,opacity:.7})));
-    const resize=()=>{if(!host.isConnected)return;const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w<650?14:10.5;camera.updateProjectionMatrix()};
-    resize();
-    const ro=new ResizeObserver(resize);ro.observe(host);
-    let mx=0,my=0,frame=0;
-    host.addEventListener('pointermove',e=>{const b=host.getBoundingClientRect();mx=((e.clientX-b.left)/b.width-.5)*.35;my=((e.clientY-b.top)/b.height-.5)*.2});
-    host.addEventListener('pointerleave',()=>{mx=my=0});
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const clock=new T.Clock();
-    function draw(){
-      if(!host.isConnected){cancelAnimationFrame(frame);ro.disconnect();scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose()});renderer.dispose();return}
-      frame=requestAnimationFrame(draw);
-      const t=clock.getElapsedTime();
-      if(!reduced){
-        group.rotation.y+=(mx-group.rotation.y)*.025;group.rotation.x+=(my-group.rotation.x)*.025;
-        shell.rotation.y=t*.19;inside.rotation.y=-t*.12;edges.rotation.y=shell.rotation.y;
-        shell.position.y=inside.position.y=edges.position.y=Math.sin(t*.7)*.09;
-        core.scale.setScalar(1+Math.sin(t*1.8)*.15);
-        waveLines.forEach(({line,j})=>{const a=line.geometry.attributes.position;for(let k=0;k<a.count;k++){const x=a.getX(k);a.setY(k,-2.15+j*.055+Math.sin(x*.8+j*.14+t*.48)*.22)}a.needsUpdate=true});
-        rings.forEach(({pivot,node,speed,radius},i)=>{pivot.rotation.z+=speed*.016;node.position.x=Math.cos(t*(.55+i*.12))*radius;node.position.y=Math.sin(t*(.55+i*.12))*radius*.67;pivot.rotation.y+=.00028*(i+1)});
-      }
-      renderer.render(scene,camera);
-    }
-    draw();
+    loop();
   }
 
-  const observer=new MutationObserver(()=>{if(!document.getElementById('pageContent'))return;mount()});
-  function init(){const root=document.getElementById('pageContent');if(!root)return;observer.observe(root,{childList:true});const app=document.getElementById('appScreen');if(app)observer.observe(app,{attributes:true,attributeFilter:['hidden']});window.addEventListener('hashchange',()=>requestAnimationFrame(mount));mount()}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);
+  else setTimeout(mount,100);
 })();
