@@ -68,3 +68,28 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
 #authScreen.ye-cinematic .auth-box>.muted{display:block!important;margin:0 0 10px!important;text-align:center!important;color:rgba(213,235,222,.72)!important;font-size:12px!important;line-height:1.35!important}
 #authScreen.ye-cinematic .ye-auth-credits,#authScreen.ye-cinematic .ye-auth-copyright{display:flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:6!important}
 #authScreen.ye-cinematic .ye-auth-copyright{display:block!important;text-align:center!important}
+
+/* Refined restrained emerald edge light; original glass form and text unchanged. */
+#authScreen.ye-cinematic .auth-box{
+ border:1px solid rgba(82,235,159,.55)!important;
+ box-shadow:inset 0 1px 0 rgba(204,255,228,.16),inset 0 0 18px rgba(28,173,112,.055),0 17px 46px rgba(0,0,0,.38),0 0 20px rgba(0,231,143,.16),0 0 2px rgba(115,255,188,.4)!important;
+}
+#authScreen.ye-cinematic .auth-box:focus-within{
+ border-color:rgba(118,255,189,.72)!important;
+ box-shadow:inset 0 1px 0 rgba(204,255,228,.23),0 17px 48px rgba(0,0,0,.42),0 0 29px rgba(0,236,146,.24),0 0 3px rgba(150,255,204,.52)!important;
+}
+
+/* Flowing emerald energy around the glass perimeter. */
+@property --ye-energy-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+#authScreen.ye-cinematic .auth-box{position:relative!important}
+#authScreen.ye-cinematic .auth-box::after{
+ content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.5px;
+ pointer-events:none;z-index:2;
+ background:conic-gradient(from var(--ye-energy-angle),transparent 0deg,transparent 235deg,rgba(0,180,100,.08) 255deg,rgba(0,235,145,.48) 302deg,#72ffc1 337deg,#e0fff1 349deg,rgba(40,255,160,.25) 357deg,transparent 360deg);
+ -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;
+ filter:drop-shadow(0 0 4px #18e99b);
+ animation:ye-energy-flow 7s linear infinite;
+}
+@keyframes ye-energy-flow{to{--ye-energy-angle:360deg}}
+@media(prefers-reduced-motion:reduce){#authScreen.ye-cinematic .auth-box::after{animation:none}}
