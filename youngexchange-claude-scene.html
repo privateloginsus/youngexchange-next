@@ -157,13 +157,19 @@ fragmentShader:[
 '  vec2 gp=(uv-uG)*vec2(asp,1.);col+=vec3(.0,.7,.35)*exp(-dot(gp,gp)*9.)*.55;vec2 pp=(uv-uP)*vec2(asp,1.);pp.y*=2.6;col+=vec3(.0,.85,.38)*exp(-dot(pp,pp)*34.)*.9;',
 '  col+=vec3(.0,.8,.4)*exp(-(uv.y-hz)*28.)*.35*exp(-pow((uv.x-.5)*asp*1.3,2.)*.6);',
 ' }else{',
-'  float dy=(hz-uv.y);vec2 mu=vec2(uv.x,hz+dy*1.7);vec3 rf=neb(mu,asp)*.55;',
-'  float streak=n(vec2(uv.x*asp*70.,dy*5.));rf*=.6+.9*streak;',
-'  col=vec3(0.,.012,.008)+rf*(1.-dy/hz*.5);',
-'  vec2 e=vec2((uv.x-.5)*asp,(uv.y-.085)*asp*3.4);float ed=length(e);',
-'  float ring=0.;for(int k=0;k<4;k++){float rr=.18+float(k)*.17;ring+=exp(-abs(ed-rr)*90.)*(1.-float(k)*.18);}',
-'  col+=vec3(.1,1.,.55)*ring*.75;col+=vec3(.0,.9,.45)*exp(-ed*5.5)*.55;',
-'  col+=vec3(.0,.9,.45)*exp(-dy*70.)*.7;',
+'  float dy=(hz-uv.y);vec2 mu=vec2(uv.x,hz+dy*1.85);vec3 rf=neb(mu,asp)*.62;',
+'  float streak=n(vec2(uv.x*asp*90.,dy*6.5+uT*.4));rf*=.55+.95*streak;',
+'  float streak2=n(vec2(uv.x*asp*40.,dy*3.));rf*=.8+.4*streak2;',
+'  col=vec3(0.,.01,.006)+rf*(1.-dy/hz*.42);',
+'  vec2 e=vec2((uv.x-.5)*asp,(uv.y-.078)*asp*3.6);float ed=length(e);',
+'  float ring=0.;',
+'  for(int k=0;k<7;k++){float rr=.12+float(k)*.155;float w=exp(-abs(ed-rr)*110.)*(1.-float(k)*.12);ring+=w;}',
+'  float pulse=.85+.15*sin(uT*1.6+ed*4.);',
+'  col+=vec3(.12,1.,.58)*ring*.95*pulse;',
+'  col+=vec3(.0,.85,.4)*exp(-ed*4.2)*.7;',
+'  col+=vec3(.0,1.,.5)*exp(-dy*85.)*.85;',
+'  float horizonGlow=exp(-dy*40.)*exp(-pow((uv.x-.5)*asp*1.1,2.));',
+'  col+=vec3(.05,.9,.45)*horizonGlow*.45;',
 ' }',
 ' vec2 vg=(vUv-.5);col*=1.-dot(vg,vg)*.55;',
 ' col=1.-exp(-col*1.25);gl_FragColor=vec4(pow(col,vec3(.95)),1.);}'
@@ -205,53 +211,30 @@ var RP={value:0},RF={value:1};var gem=new THREE.Group();root.add(gem);
 var gb=new THREE.Mesh(geo,gemMat(2));gb.renderOrder=0;gem.add(gb);var gf=new THREE.Mesh(geo,gemMat(3));gf.renderOrder=3;gem.add(gf);
 var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y=.4;core.position.y=.28;core.renderOrder=1;gem.add(core);
 var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
-var edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,1),new THREE.LineBasicMaterial({color:0x8dffc4,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false}));gem.add(edges);
+var edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,1),new THREE.LineBasicMaterial({color:0x19e68c,transparent:true,opacity:.35}));edges.renderOrder=4;gem.add(edges);
 var rroot=new THREE.Group();sc.add(rroot);var rgem=new THREE.Group();rroot.add(rgem);rgem.add(new THREE.Mesh(geo,gemMat(0,1)));var rcore=new THREE.Mesh(geo,gemMat(1,1));rcore.scale.copy(core.scale);rcore.position.copy(core.position);rgem.add(rcore);var rcore2=new THREE.Mesh(geo,gemMat(1,1));rcore2.scale.copy(core2.scale);rcore2.position.copy(core2.position);rgem.add(rcore2);
-var cvs=document.createElement('canvas');cvs.width=cvs.height=128;var cx=cvs.getContext('2d');var gr=cx.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.12,'rgba(190,255,215,.8)');gr.addColorStop(.4,'rgba(40,255,140,.18)');gr.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=gr;cx.fillRect(0,0,128,128);
-var lh=cx.createLinearGradient(0,0,128,0);lh.addColorStop(0,'rgba(210,255,230,0)');lh.addColorStop(.5,'rgba(230,255,240,.95)');lh.addColorStop(1,'rgba(210,255,230,0)');cx.fillStyle=lh;cx.fillRect(0,62,128,4);
-var lv=cx.createLinearGradient(0,0,0,128);lv.addColorStop(0,'rgba(210,255,230,0)');lv.addColorStop(.5,'rgba(230,255,240,.95)');lv.addColorStop(1,'rgba(210,255,230,0)');cx.fillStyle=lv;cx.fillRect(62,0,4,128);
-var stTex=new THREE.CanvasTexture(cvs),sparks=[];
-[].forEach(function(v,i){var m=new THREE.SpriteMaterial({map:stTex,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,opacity:0});var sp=new THREE.Sprite(m);sp.position.copy(v).multiplyScalar(1.04);sp.scale.setScalar(.5);gem.add(sp);sparks.push({m:m,ph:i*1.3,sp:sp});});
-
 /* chrome rings */
-var chrome=new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:['precision highp float;varying vec3 vN;varying vec3 vW;',
+var chrome=new THREE.ShaderMaterial({uniforms:{uT:U.uT},vertexShader:VS,fragmentShader:[
+'precision highp float;varying vec3 vN;varying vec3 vW;uniform float uT;',
 'void main(){vec3 N=normalize(vN),V=normalize(cameraPosition-vW),Rf=reflect(-V,N);float nv=abs(dot(N,V));',
-' float band=sin(Rf.y*5.5+Rf.x*2.2)*.5+.5;float sky=smoothstep(-.2,.9,Rf.y);',
-' vec3 sil=vec3(.78,.9,.84)*(.08+.9*pow(band,1.6)*(.4+.6*sky));',
-' sil+=vec3(.05,.85,.4)*smoothstep(.2,.9,.5-Rf.y*.5)*.45;',
-' sil+=vec3(1.,.9,.55)*pow(smoothstep(.85,1.,dot(Rf,normalize(vec3(.6,.5,.6)))),3.)*.9;',
-' sil+=vec3(.1,1.,.5)*pow(1.-nv,3.)*.5;gl_FragColor=vec4(sil,1.);}'].join('\n')});
+' vec3 col=vec3(.05,.25,.15)+vec3(.2,.8,.5)*pow(1.-nv,2.5);',
+' col+=vec3(.6,1.,.8)*pow(max(dot(Rf,normalize(vec3(.4,.6,.5))),0.),32.);',
+' col+=vec3(.3,.9,.6)*pow(max(dot(Rf,normalize(vec3(-.5,.3,.7))),0.),20.)*.6;',
+' gl_FragColor=vec4(col,1.);}'].join('\n'),side:THREE.DoubleSide});
 var rings=[];
-[[2.05,1.28,.35,0,.05],[2.2,1.38,-.55,.4,-.04],[1.9,1.12,1.05,-.3,.06]].forEach(function(c,ix){
+[[1.55,.4,.15,0,.8],[1.85,-.3,.05,.5,.55],[2.15,.2,-.1,1.2,.35]].forEach(function(c,ix){
  var g=new THREE.Group(),tor=new THREE.Mesh(new THREE.TorusGeometry(c[0],.042,20,180),chrome);g.add(tor);
  var piv=new THREE.Group(),sp=new THREE.Mesh(new THREE.SphereGeometry(.11,32,24),chrome);sp.position.x=c[0];piv.add(sp);g.add(piv);
  g.rotation.set(c[1],c[3],c[2]);g.position.y=.3;root.add(g);rings.push({g:g,piv:piv,s:c[4],ph:ix*2.1,c:c});});
-
-/* ---------- layout ---------- */
-var stage=document.getElementById('stage');
-function size(){var w=innerWidth,hh=innerHeight,dpr=Math.min(devicePixelRatio||1,1.5);R.setPixelRatio(dpr);R.setSize(w,hh,false);
- cam.aspect=w/hh;cam.updateProjectionMatrix();U.uRes.value.set(w,hh);
- var r=stage.getBoundingClientRect(),H=2*10*Math.tan(cam.fov*Math.PI/360),W=H*cam.aspect;
- var s=Math.min(r.height*1.04/hh*H/3.9,(r.width*.9/w)*W/4.6);
- root.scale.setScalar(Math.max(s*.86,.18));
- var cy=r.top+r.height*.5;root.position.y=(.5-cy/hh)*H-.3*root.scale.x-0.22;
- var sS=root.scale.x,pl=root.position.y-1.5*sS;RP.value=pl;U.uP.value.set(.5,.5+pl/H);RF.value=3.4*sS;rroot.scale.set(sS,-sS,sS);rroot.position.y=2*pl-root.position.y;U.uG.value.set(.5,1-cy/hh);}
-addEventListener('resize',size);
-if(window.ResizeObserver)new ResizeObserver(size).observe(stage);
-size();
-
-var mx=0,my=0,tx=0,ty=0;
-addEventListener('pointermove',function(e){tx=e.clientX/innerWidth*2-1;ty=e.clientY/innerHeight*2-1;});addEventListener('message',function(e){if(e.origin!==location.origin||!e.data||e.data.type!=='ye-gem-pointer')return;tx=Math.max(-1,Math.min(1,Number(e.data.x)||0));ty=Math.max(-1,Math.min(1,Number(e.data.y)||0));});
-var clock=new THREE.Clock(),t0=0;
-function tick(){var dt=clock.getDelta();if(!reduce)t0+=dt;var t=t0;U.uT.value=t;
- mx+=(tx-mx)*.05;my+=(ty-my)*.05;U.uM.value.set(0,0);
- gem.rotation.y=t*.22+mx*.12;gem.rotation.x=my*.075;gem.rotation.z=-mx*.025;
- core.rotation.y=.4;core2.rotation.y=-.3;rgem.rotation.copy(gem.rotation);rcore.rotation.y=core.rotation.y;rcore2.rotation.y=core2.rotation.y;sparks.forEach(function(o){var v=Math.pow(Math.max(0,Math.sin(t*1.6+o.ph)),5);o.m.opacity=v*.95;o.sp.scale.setScalar(.5+v);});
- 
+function resize(){var w=innerWidth,h=innerHeight;R.setSize(w,h,false);R.setPixelRatio(Math.min(devicePixelRatio||1,2));cam.aspect=w/h;cam.updateProjectionMatrix();U.uRes.value.set(w,h);}
+resize();addEventListener('resize',resize);
+var mx=0,my=0;addEventListener('pointermove',function(e){mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;});
+function loop(t){requestAnimationFrame(loop);t*=.001;U.uT.value=t;U.uM.value.x+= (mx-U.uM.value.x)*.05;U.uM.value.y+= (my-U.uM.value.y)*.05;
+ if(!reduce){gem.rotation.y=t*.35;core.rotation.y=t*.8;core2.rotation.y=-t*.6;}
+ rgem.rotation.copy(gem.rotation);rgem.position.y=-gem.position.y-.2;
  rings.forEach(function(o,i){o.g.rotation.y=o.c[3]+t*o.s*(i?1:-1);o.g.rotation.z=o.c[2]+Math.sin(t*.25+o.ph)*.12;o.piv.rotation.z=t*(.35+i*.12)+o.ph;});
- R.clear();R.render(bgS,bgC);R.clearDepth();R.render(sc,cam);
- requestAnimationFrame(tick);}
-tick();
+ R.clear();R.render(bgS,bgC);R.render(sc,cam);}
+loop(0);
 })();
 </script>
 </body>
