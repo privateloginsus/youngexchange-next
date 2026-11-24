@@ -1,0 +1,210 @@
+/* Claude prototype integration: visual-only overrides, keep existing auth IDs/handlers. */
+#authScreen.ye-cinematic{height:100dvh!important;min-height:0!important;max-height:100dvh!important;padding:clamp(52px,7.5vh,72px) 16px clamp(20px,3vh,32px)!important;overflow:hidden!important;background:radial-gradient(ellipse 32% 45% at 12% 43%,rgba(0,96,57,.21),transparent),radial-gradient(ellipse 30% 45% at 88% 38%,rgba(0,112,65,.24),transparent),#010806!important}
+#authScreen.ye-cinematic .ye-auth-header{top:clamp(12px,2.2vh,24px)!important;left:clamp(18px,4vw,64px)!important;right:auto!important}
+#authScreen.ye-cinematic .ye-auth-header nav{display:none!important}
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark{font-weight:700!important;letter-spacing:-.035em!important}
+#authScreen.ye-cinematic .auth-panel{width:min(100%,404px)!important;max-height:calc(100dvh - 80px)!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;margin:0 auto!important;min-height:0!important}
+#authScreen.ye-cinematic .ye-auth-stage{height:clamp(120px,32dvh,335px)!important;min-height:0!important;flex:0 1 auto!important;overflow:visible!important;z-index:1!important}
+#authScreen.ye-cinematic .auth-box{width:100%!important;max-width:404px!important;margin:0 auto!important;padding:clamp(13px,2.2vh,24px) clamp(18px,2.5vw,28px)!important;border-radius:20px!important;background:rgba(2,13,10,.70)!important;backdrop-filter:blur(18px) saturate(120%)!important;-webkit-backdrop-filter:blur(18px) saturate(120%)!important;border:1px solid rgba(70,255,170,.28)!important;box-shadow:0 1px 0 rgba(190,255,225,.10) inset,0 28px 60px rgba(0,0,0,.50),0 0 28px rgba(25,230,140,.10)!important}
+#authScreen.ye-cinematic .mobile-brand,#authScreen.ye-cinematic .ye-auth-intro,#authScreen.ye-cinematic .auth-box>.eyebrow{display:none!important}
+#authScreen.ye-cinematic .auth-box>h2{margin:0 0 5px!important;font-size:clamp(19px,2.6vh,24px)!important;letter-spacing:-.025em!important}
+#authScreen.ye-cinematic .auth-box>.muted{margin:0 0 clamp(9px,1.7vh,16px)!important;font-size:12px!important}
+#authScreen.ye-cinematic .auth-box .tabs{margin:0 0 10px!important}
+#authScreen.ye-cinematic .auth-box input{min-height:38px!important}
+#authScreen.ye-cinematic .auth-box .auth-foot{display:none!important}
+#authScreen.ye-cinematic .ye-auth-credits{margin:8px auto 0!important;gap:5px 12px!important;font-size:9px!important}
+#authScreen.ye-cinematic .ye-auth-copyright{margin:4px auto 0!important;font-size:9px!important}
+#authScreen.ye-cinematic .ye-auth-credits .italy{display:none!important}
+#authScreen.ye-cinematic .ye-cosmos-horizon{opacity:.6!important}
+#authScreen.ye-cinematic .ye-cosmos-platform{opacity:.65!important}
+@media(max-height:730px){#authScreen.ye-cinematic .ye-auth-stage{height:clamp(130px,30dvh,250px)!important}#authScreen.ye-cinematic .auth-box{padding:12px 20px!important}#authScreen.ye-cinematic .auth-box>.muted{display:none!important}}
+@media(max-width:560px){#authScreen.ye-cinematic .ye-auth-header{left:18px!important}#authScreen.ye-cinematic .auth-panel{width:min(100%,360px)!important}#authScreen.ye-cinematic .ye-auth-stage{height:clamp(140px,28dvh,230px)!important}#authScreen.ye-cinematic .auth-box{padding:15px 18px!important}}
+@media(max-height:560px){#authScreen.ye-cinematic{overflow-y:auto!important;height:auto!important;min-height:100dvh!important;max-height:none!important}#authScreen.ye-cinematic .auth-panel{max-height:none!important}#authScreen.ye-cinematic .ye-auth-stage{height:130px!important}}
+
+/* Isolated supplied shader renderer: background and 3D crystal; real form remains on parent. */
+#authScreen.ye-cinematic .ye-claude-scene{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:0;pointer-events:none;background:#010806}
+#authScreen.ye-cinematic .ye-auth-stage canvas,#authScreen.ye-cinematic .ye-auth-fallback{visibility:hidden!important}
+#authScreen.ye-cinematic .ye-auth-stage{pointer-events:none!important}
+#authScreen.ye-cinematic:before,#authScreen.ye-cinematic:after,#authScreen.ye-cinematic .ye-cosmos-horizon,#authScreen.ye-cinematic .ye-cosmos-platform{display:none!important}
+#authScreen.ye-cinematic .auth-panel{z-index:3!important}
+#authScreen.ye-cinematic .ye-auth-header{z-index:4!important}
+
+/* v28 viewport repair: eliminate truncated form and obsolete intro. */
+html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0;min-height:100%;overflow-x:hidden}
+#authScreen.ye-cinematic:not([hidden]){position:relative!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:center!important;width:100%!important;min-height:100dvh!important;height:100dvh!important;max-height:none!important;padding:clamp(54px,7dvh,76px) 16px 14px!important;overflow:hidden!important;isolation:isolate}
+#authScreen.ye-cinematic .auth-art{display:none!important}
+#authScreen.ye-cinematic .ye-auth-header{position:absolute!important;top:12px!important;left:clamp(16px,3.8vw,56px)!important;right:16px!important;display:flex!important;justify-content:flex-start!important;z-index:12!important}
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark{display:block!important;font-size:clamp(17px,2.4vw,28px)!important}
+#authScreen.ye-cinematic .ye-auth-intro,#authScreen.ye-cinematic .auth-box>.eyebrow,#authScreen.ye-cinematic .auth-box>.muted{display:none!important}
+#authScreen.ye-cinematic .auth-panel{position:relative!important;z-index:5!important;display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:center!important;flex:1 1 auto!important;width:min(100%,400px)!important;max-height:none!important;min-height:0!important;margin:0 auto!important;padding:clamp(10px,2vh,24px) 0 12px!important;gap:0!important}
+#authScreen.ye-cinematic .ye-auth-stage{height:clamp(190px,40dvh,400px)!important;min-height:0!important;flex:0 0 auto!important;margin:0 auto clamp(10px,1.8vh,20px)!important;width:min(100%,580px)!important}
+#authScreen.ye-cinematic .auth-box{box-sizing:border-box!important;width:100%!important;max-width:390px!important;flex:0 0 auto!important;padding:clamp(13px,1.9vh,22px) clamp(17px,2.3vw,26px)!important;background:linear-gradient(155deg,rgba(2,16,12,.64),rgba(0,8,7,.83))!important;border:1px solid rgba(76,234,156,.42)!important;border-radius:17px!important;box-shadow:0 0 0 1px rgba(174,255,216,.035) inset,0 15px 45px rgba(0,0,0,.55),0 0 32px rgba(0,219,127,.12)!important;backdrop-filter:blur(22px)!important;-webkit-backdrop-filter:blur(22px)!important}
+#authScreen.ye-cinematic .auth-box h2{font-size:clamp(19px,2.7vh,24px)!important;margin:0 0 10px!important;text-align:center!important}
+#authScreen.ye-cinematic .auth-box .tabs{margin-bottom:clamp(6px,1vh,12px)!important}
+#authScreen.ye-cinematic .auth-box label{font-size:11px!important;margin-bottom:3px!important}
+#authScreen.ye-cinematic .auth-box input{height:clamp(34px,4.5vh,41px)!important;min-height:34px!important}
+#authScreen.ye-cinematic .auth-box form{gap:clamp(5px,.9vh,9px)!important}
+#authScreen.ye-cinematic .auth-box button[type=submit]{min-height:48px!important}
+#authScreen.ye-cinematic .ye-auth-credits{flex:0 0 auto!important;display:flex!important;flex-wrap:wrap!important;justify-content:center!important;margin:7px 0 2px!important;font-size:10px!important;white-space:nowrap!important}
+#authScreen.ye-cinematic .ye-auth-copyright{flex:0 0 auto!important;margin:2px 0 0!important;font-size:9px!important}
+#authScreen.ye-cinematic .ye-claude-scene{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:-1!important;pointer-events:none!important}
+@media(max-height:760px){#authScreen.ye-cinematic .ye-auth-stage{height:clamp(140px,32dvh,260px)!important}#authScreen.ye-cinematic .auth-box{padding:10px 17px!important}#authScreen.ye-cinematic .auth-box .tabs{margin-bottom:5px!important}#authScreen.ye-cinematic .auth-panel{justify-content:flex-start!important}}
+@media(max-width:600px){#authScreen.ye-cinematic .auth-panel{width:min(100%,350px)!important}#authScreen.ye-cinematic .ye-auth-stage{height:clamp(150px,30dvh,240px)!important}#authScreen.ye-cinematic .ye-auth-credits{font-size:8px!important;gap:4px 8px!important}}
+@media(max-height:580px){#authScreen.ye-cinematic:not([hidden]){height:auto!important;min-height:100dvh!important;overflow-y:auto!important}#authScreen.ye-cinematic .auth-panel{flex:0 0 auto!important}#authScreen.ye-cinematic .ye-auth-stage{height:140px!important}}
+
+/* Approved refinement: preserve original single-column login, only widen by ~17%. */
+@media(min-width:601px){
+ #authScreen.ye-cinematic .auth-panel{width:min(calc(100vw - 40px),456px)!important;max-width:456px!important}
+ #authScreen.ye-cinematic .auth-box{width:100%!important;max-width:456px!important}
+}
+#authScreen.ye-cinematic .auth-box{transition:border-color .25s ease,box-shadow .25s ease!important}
+#authScreen.ye-cinematic .auth-box:focus-within{border-color:rgba(88,244,170,.55)!important;box-shadow:0 15px 45px rgba(0,0,0,.55),0 0 30px rgba(0,219,127,.16)!important}
+
+/* Requested polish: retain ALL existing captions, original login layout and functionality. */
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark{display:block!important;visibility:visible!important;color:#f5fff9!important;text-shadow:0 1px 12px rgba(0,0,0,.4)!important}
+#authScreen.ye-cinematic .ye-auth-header .ye-auth-wordmark b{color:#12dc92!important}
+#authScreen.ye-cinematic .auth-box{background:linear-gradient(155deg,rgba(3,22,16,.58),rgba(1,11,9,.72))!important;backdrop-filter:blur(20px) saturate(125%)!important;-webkit-backdrop-filter:blur(20px) saturate(125%)!important;border:1px solid rgba(85,230,165,.35)!important;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px rgba(190,255,225,.11)!important;transition:background .32s ease,border-color .32s ease,box-shadow .32s ease,transform .32s ease!important}
+#authScreen.ye-cinematic .auth-box:focus-within{background:linear-gradient(145deg,rgba(5,30,22,.67),rgba(1,16,13,.78))!important;border-color:rgba(90,241,172,.57)!important;box-shadow:0 16px 48px rgba(0,0,0,.40),0 0 24px rgba(21,201,119,.11)!important}
+#authScreen.ye-cinematic .auth-box>.muted{display:block!important;margin:0 0 10px!important;text-align:center!important;color:rgba(213,235,222,.72)!important;font-size:12px!important;line-height:1.35!important}
+#authScreen.ye-cinematic .ye-auth-credits,#authScreen.ye-cinematic .ye-auth-copyright{display:flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:6!important}
+#authScreen.ye-cinematic .ye-auth-copyright{display:block!important;text-align:center!important}
+
+/* Refined restrained emerald edge light; original glass form and text unchanged. */
+#authScreen.ye-cinematic .auth-box{
+ border:1px solid rgba(82,235,159,.55)!important;
+ box-shadow:inset 0 1px 0 rgba(204,255,228,.16),inset 0 0 18px rgba(28,173,112,.055),0 17px 46px rgba(0,0,0,.38),0 0 20px rgba(0,231,143,.16),0 0 2px rgba(115,255,188,.4)!important;
+}
+#authScreen.ye-cinematic .auth-box:focus-within{
+ border-color:rgba(118,255,189,.72)!important;
+ box-shadow:inset 0 1px 0 rgba(204,255,228,.23),0 17px 48px rgba(0,0,0,.42),0 0 29px rgba(0,236,146,.24),0 0 3px rgba(150,255,204,.52)!important;
+}
+
+/* Flowing emerald energy around the glass perimeter. */
+@property --ye-energy-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+#authScreen.ye-cinematic .auth-box{position:relative!important}
+#authScreen.ye-cinematic .auth-box::after{
+ content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.5px;
+ pointer-events:none;z-index:3;
+ background:conic-gradient(from var(--ye-energy-angle),transparent 0deg,transparent 235deg,rgba(0,180,100,.08) 255deg,rgba(0,235,145,.48) 302deg,#72ffc1 337deg,#e0fff1 349deg,rgba(40,255,160,.25) 357deg,transparent 360deg);
+ -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;
+ filter:drop-shadow(0 0 4px #18e99b);
+ animation:ye-energy-flow 7s linear infinite;
+}
+@keyframes ye-energy-flow{to{--ye-energy-angle:360deg}}
+@media(prefers-reduced-motion:reduce){#authScreen.ye-cinematic .auth-box::after{animation:none}}
+
+
+/* Satin emerald Accedi button — targets real selector, no conflicts */
+#authScreen.ye-cinematic .auth-box button.primary.full,
+#authScreen.ye-cinematic #authSubmit {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    height: auto !important;
+    padding: 14px 48px 14px 24px !important;
+    border: 1px solid rgba(72, 158, 124, 0.85) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(145deg, #1a4a3a 0%, #0d2e24 45%, #09251d 100%) !important;
+    color: #f0faf5 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.6px !important;
+    cursor: pointer !important;
+    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.14),
+        inset 0 -1px 0 rgba(0,0,0,0.2),
+        0 4px 16px rgba(0,0,0,0.28),
+        0 0 12px rgba(0,180,110,0.12) !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+#authScreen.ye-cinematic .auth-box button.primary.full span,
+#authScreen.ye-cinematic #authSubmit span {
+    display: none !important; /* hide old ↗; use ::after arrow */
+}
+
+#authScreen.ye-cinematic .auth-box button.primary.full::after,
+#authScreen.ye-cinematic #authSubmit::after {
+    content: "→" !important;
+    position: absolute !important;
+    right: 20px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #b4e4ce !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0 !important;
+    pointer-events: none !important;
+}
+
+#authScreen.ye-cinematic .auth-box button.primary.full:hover,
+#authScreen.ye-cinematic #authSubmit:hover {
+    border-color: #79c8a5 !important;
+    background: linear-gradient(145deg, #226b52 0%, #134033 45%, #0d2e24 100%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.18),
+        0 0 20px rgba(72,158,124,0.28),
+        0 6px 18px rgba(0,0,0,0.3) !important;
+}
+
+#authScreen.ye-cinematic .auth-box button.primary.full:active,
+#authScreen.ye-cinematic #authSubmit:active {
+    transform: scale(0.985) !important;
+}
+
+#authScreen.ye-cinematic .auth-box button.primary.full:focus-visible,
+#authScreen.ye-cinematic #authSubmit:focus-visible {
+    outline: 2px solid #79c8a5 !important;
+    outline-offset: 3px !important;
+}
+
+/* Ensure form button has no leftover primary styles leaking */
+#authScreen.ye-cinematic .auth-box form button[type=submit] {
+    margin-top: 4px !important;
+}
+
+/* === Liquid Refraction – only on glass surface/borders, text stays sharp === */
+#authScreen.ye-cinematic .auth-box {
+  position: relative !important;
+  isolation: isolate;
+  /* no filter here → text & inputs remain perfectly sharp */
+}
+
+/* Liquid surface layer (behind content) */
+#authScreen.ye-cinematic .auth-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    155deg,
+    rgba(4, 28, 20, 0.45),
+    rgba(1, 12, 10, 0.55)
+  );
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  filter: url(#ye-liquid-refraction);
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keep real content above the liquid layer */
+#authScreen.ye-cinematic .auth-box > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Energy border stays on ::after (already present) */
+#authScreen.ye-cinematic .auth-box::after {
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #authScreen.ye-cinematic .auth-box::before {
+    filter: none;
+    opacity: 0.7;
+  }
+}
