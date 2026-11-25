@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>YoungExchange — Accedi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
+<style>
+:root{color-scheme:dark;--em:#19e68c;--em2:#0fa968;--ink:#eafff4;--mute:rgba(220,245,232,.62);--line:rgba(60,255,160,.38);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0;background:#010604;overflow:hidden}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+.page{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:0 clamp(16px,4vw,64px)}
+header{display:flex;align-items:center;justify-content:space-between;height:clamp(56px,9vh,84px);flex:none}
+.logo{display:flex;align-items:center;gap:10px;font-size:clamp(19px,2.1vw,27px);font-weight:600;letter-spacing:-.02em;text-decoration:none;color:#fff}
+.logo svg{width:clamp(28px,2.8vw,38px);height:auto;filter:drop-shadow(0 0 10px rgba(25,230,140,.6))}
+.logo b{color:var(--em);font-weight:600}
+nav{display:flex;gap:clamp(16px,2.4vw,38px)}
+nav a{color:rgba(240,255,248,.82);text-decoration:none;font-size:clamp(12px,1vw,14.5px);font-weight:400;letter-spacing:.01em;transition:color .2s}
+nav a:hover{color:var(--em)}
+main{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center}
+#stage{flex:1;min-height:150px;width:100%}
+.card{position:relative;width:clamp(296px,90vw,396px);padding:clamp(18px,3vh,28px) clamp(20px,2.4vw,30px) clamp(16px,2.4vh,22px);border-radius:24px;background:linear-gradient(160deg,rgba(8,40,28,.62),rgba(2,14,10,.72));border:1px solid var(--line);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);box-shadow:0 0 0 1px rgba(25,230,140,.07) inset,0 1px 0 rgba(180,255,220,.18) inset,0 0 38px rgba(25,230,140,.22),0 30px 60px rgba(0,0,0,.55)}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 34%)}
+h1{margin:0;text-align:center;font-size:clamp(19px,2.3vh + 4px,24px);font-weight:600;letter-spacing:-.02em}
+.sub{margin:6px 0 clamp(12px,2.2vh,20px);text-align:center;color:var(--mute);font-size:13px;font-weight:300}
+label{display:block;font-size:12px;font-weight:500;margin:0 0 6px;color:rgba(235,255,245,.86)}
+.field{position:relative;margin-bottom:clamp(10px,1.8vh,15px)}
+input{width:100%;height:clamp(38px,5.4vh,44px);padding:0 14px;border-radius:12px;border:1px solid rgba(90,255,180,.28);background:rgba(0,10,6,.55);color:#fff;font:400 14px Inter,system-ui,sans-serif;outline:none;transition:border-color .2s,box-shadow .2s}
+input::placeholder{color:rgba(210,240,225,.38)}
+input:focus-visible{border-color:var(--em);box-shadow:0 0 0 3px rgba(25,230,140,.2)}
+.eye{position:absolute;right:6px;bottom:3px;width:36px;height:36px;border:0;background:none;color:var(--mute);cursor:pointer;border-radius:8px}
+.eye:focus-visible,.forgot:focus-visible,.alt a:focus-visible,.btn:focus-visible{outline:2px solid var(--em);outline-offset:2px}
+.forgot{display:block;text-align:right;font-size:12px;color:var(--em);text-decoration:none;margin:-4px 0 clamp(12px,2vh,18px)}
+.forgot:hover{text-decoration:underline}
+.btn{width:100%;height:clamp(40px,5.6vh,46px);border:0;border-radius:12px;cursor:pointer;font:600 14.5px Inter,system-ui,sans-serif;color:#021a10;letter-spacing:.01em;background:linear-gradient(180deg,#46f0aa 0%,#14c97c 55%,#0c9a5c 100%);box-shadow:0 1px 0 rgba(255,255,255,.55) inset,0 0 26px rgba(25,230,140,.45),0 8px 18px rgba(0,0,0,.4);transition:transform .15s,box-shadow .2s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.55) inset,0 0 36px rgba(25,230,140,.65),0 10px 22px rgba(0,0,0,.4)}
+.alt{margin:clamp(10px,1.8vh,15px) 0 0;text-align:center;font-size:12px;color:var(--mute)}
+.alt a{color:rgba(235,255,245,.92);text-decoration:none;border-bottom:1px solid rgba(25,230,140,.5)}
+.msg{min-height:0;text-align:center;font-size:12px;color:var(--em);margin:8px 0 0}
+footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:clamp(44px,7vh,64px);font-size:11.5px;color:rgba(215,240,228,.58)}
+.feats{display:flex;align-items:center}
+.feats span{display:flex;align-items:center;gap:8px;padding:0 clamp(10px,1.6vw,22px);border-left:1px solid rgba(90,255,180,.22)}
+.feats span:first-child{padding-left:0;border-left:0}
+.feats svg{width:16px;height:16px;stroke:var(--em);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:760px){nav{display:none}.feats span:not(:first-child) b{display:none}.feats span{padding:0 10px}footer{font-size:10.5px}.copy{text-align:right;max-width:46%}}
+@media (max-width:520px){.feats span b{display:none}.feats span{padding:0 9px}}
+@media (max-height:640px){.sub{display:none}}
+header{height:clamp(48px,7.5vh,68px)}
+footer{justify-content:center;min-height:clamp(28px,4.6vh,42px)}
+.copy{max-width:none;text-align:center}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes spin{to{--a:360deg}}
+@keyframes sheen{0%,60%{left:-60%}100%{left:130%}}
+.card{width:clamp(300px,90vw,404px);padding:clamp(18px,2.6vh,26px) clamp(20px,2.4vw,28px) clamp(12px,1.8vh,16px);border:1px solid transparent;border-radius:22px;background:linear-gradient(160deg,rgba(6,34,24,.66),rgba(1,10,7,.8)) padding-box,conic-gradient(from var(--a,0deg),rgba(25,230,140,.14),rgba(150,255,215,.95) 12%,rgba(25,230,140,.14) 28%,rgba(25,230,140,.1) 62%,rgba(80,255,170,.7) 78%,rgba(25,230,140,.14)) border-box;animation:spin 10s linear infinite}
+.card::after{content:"";position:absolute;top:0;left:14%;right:14%;height:1px;background:linear-gradient(90deg,transparent,rgba(180,255,220,.9),transparent);pointer-events:none}
+h1{font-size:clamp(23px,3.2vh + 6px,30px);font-weight:500;letter-spacing:-.035em}
+.sub{margin:4px 0 clamp(12px,2vh,18px)}
+.sub strong{display:block;font-weight:500;font-size:14px;color:var(--em);margin-bottom:2px}
+.sub span{display:block}
+.fld{position:relative;margin-bottom:clamp(9px,1.5vh,12px)}
+.fld input{height:clamp(46px,6.2vh,52px);padding:16px 14px 3px 42px;border-radius:14px;background:rgba(0,12,8,.6);border:1px solid rgba(90,255,180,.22);font-size:14px}
+.fld input:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(25,230,140,.16),0 0 22px rgba(25,230,140,.18)}
+.fld label{position:absolute;left:42px;top:50%;transform:translateY(-50%);margin:0;font-size:13.5px;font-weight:400;color:rgba(210,240,225,.5);pointer-events:none;transition:all .18s}
+.fld input:focus+label,.fld input:not(:placeholder-shown)+label{top:11px;transform:none;font-size:10.5px;color:var(--em);letter-spacing:.02em}
+.fld .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;fill:none;stroke:rgba(120,255,190,.65);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s;pointer-events:none}
+.fld input:focus~.ic{stroke:var(--em)}
+.fld .eye{right:7px;bottom:auto;top:50%;transform:translateY(-50%)}
+.btn{position:relative;overflow:hidden}
+.btn::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:sheen 5s ease-in-out infinite;pointer-events:none}
+.cfeats{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;row-gap:4px;margin-top:clamp(9px,1.5vh,13px);padding-top:clamp(8px,1.3vh,11px);border-top:1px solid rgba(90,255,180,.14);font-size:10px;color:rgba(210,238,225,.55)}
+.cfeats span{display:flex;align-items:center;gap:5px;padding:0 8px;border-left:1px solid rgba(90,255,180,.2);white-space:nowrap}
+.cfeats span:first-child{border-left:0;padding-left:0}.cfeats span:last-child{padding-right:0}
+.cfeats svg{width:12px;height:12px;fill:none;stroke:var(--em);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media (max-height:640px){.sub{display:block}.sub span{display:none}}
+@media (prefers-reduced-motion:reduce){.card,.btn::after{animation:none}}
+h1{font-size:clamp(19px,2.6vh + 4px,24px);font-weight:600;letter-spacing:-.025em}
+.sub{margin:6px 0 clamp(14px,2.4vh,20px)}
+.card{background:rgba(2,13,10,.74);border:1px solid rgba(70,255,170,.26);border-radius:20px;animation:none;backdrop-filter:blur(14px) saturate(120%);-webkit-backdrop-filter:blur(14px) saturate(120%);box-shadow:0 1px 0 rgba(190,255,225,.1) inset,0 28px 60px rgba(0,0,0,.6),0 0 30px rgba(25,230,140,.08)}
+.card::before{display:none}
+.btn::after{display:none}
+.btn{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 16px rgba(25,230,140,.28)}
+.fld input{background:rgba(0,10,7,.55);border-color:rgba(90,255,180,.18)}
+</style>
+<style>header,.card,footer{display:none!important}.page{pointer-events:none;padding:0!important}.page main{justify-content:flex-start!important}#stage{flex:none!important;height:43vh!important;min-height:200px!important}#gl{pointer-events:none!important}</style></head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="page">
+  <header>
+    <a class="logo" href="#" aria-label="YoungExchange">
+      
+      <span>Young<b>Exchange</b></span>
+    </a>
+    
+  </header>
+  <main>
+    <div id="stage"></div>
+    <section class="card" aria-labelledby="t">
+      <h1 id="t">Accedi al tuo conto</h1>
+      <p class="sub"><span>Inserisci le tue credenziali per continuare.</span></p>
+      <form id="f" novalidate>
+        <div class="fld"><input id="em" type="email" autocomplete="email" placeholder=" "><label for="em">Indirizzo email</label><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></div>
+        <div class="fld"><input id="pw" type="password" autocomplete="current-password" placeholder=" " style="padding-right:46px"><label for="pw">Password</label><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+          <button class="eye" type="button" id="eye" aria-label="Mostra password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <a class="forgot" href="#">Password dimenticata?</a>
+        <button class="btn" type="submit">Accedi al conto</button>
+        <p class="msg" id="msg" role="status"></p>
+      </form>
+      <p class="alt">Non hai un account? <a href="#">Registrati</a></p>
+      <div class="cfeats">
+        <span><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>Design essenziale</span>
+        <span><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Sicurezza al centro</span>
+        <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>Esperienza italiana</span>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="copy">© 2026 YoungExchange</div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+var fm=document.getElementById('f'),pw=document.getElementById('pw');
+document.getElementById('eye').onclick=function(){pw.type=pw.type==='password'?'text':'password'};
+fm.onsubmit=function(e){e.preventDefault();document.getElementById('msg').textContent='Anteprima grafica: collega qui la tua autenticazione.'};
+if(!window.THREE)return;
+var cv=document.getElementById('gl'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+R.autoClear=false;
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- background: nebula + stars + glossy floor ---------- */
+var bgS=new THREE.Scene(),bgC=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+var U={uT:{value:0},uRes:{value:new THREE.Vector2(1,1)},uM:{value:new THREE.Vector2()},uG:{value:new THREE.Vector2(.5,.6)},uP:{value:new THREE.Vector2(.5,.4)}};
+bgS.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:U,depthTest:false,
+vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
+fragmentShader:[
+'precision highp float;varying vec2 vUv;uniform float uT;uniform vec2 uRes,uM,uG,uP;',
+'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
+'float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}',
+'float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}',
+'vec3 neb(vec2 uv,float asp){vec2 q=(uv-.5)*vec2(asp,1.)*2.1;vec2 qf=q+vec2(-uT*.022,uT*.006)+uM*.03;q+=vec2(uT*.055,uT*.016)-uM*.07;',
+' float w=fbm(q+fbm(q*1.6+uT*.05)*1.3);float d=fbm(q*1.3+w*1.8+fbm(qf*.9)*.7);',
+' float side=.35+.65*smoothstep(.0,.85,abs(uv.x-.5)*2.);',
+' float c=smoothstep(.38,.8,d)*side;float fil=pow(smoothstep(.5,.9,w),3.)*side;',
+' vec3 col=vec3(0.,.03,.02)*(1.+d)+vec3(.0,.55,.28)*c*.85+vec3(.15,1.,.62)*fil*.9+vec3(.0,.35,.5)*pow(c,2.)*.35;',
+' return col;}',
+'float stars(vec2 uv,float asp,float sc,float th){vec2 p=uv*vec2(asp,1.)*sc;vec2 i=floor(p),f=fract(p)-.5;float r=h(i);if(r<th)return 0.;vec2 o=vec2(h(i+3.1),h(i+7.7))-.5;float d=length(f-o*.7);float b=(r-th)/(1.-th);return smoothstep(.09*(.4+b),0.,d)*(.5+b);}',
+'void main(){vec2 uv=vUv;float asp=uRes.x/uRes.y;float hz=.2;vec3 col;',
+' vec2 pu=uv+uM*.004;',
+' if(uv.y>hz){vec3 nb=neb(uv,asp);col=nb;',
+'  float s=stars(pu,asp,38.,.95)+stars(pu*1.0+.3,asp,80.,.96)*.6;col+=vec3(.9,1.,.95)*s*1.8;',
+'  vec2 sp=(uv-vec2(.073,.87))*vec2(asp,1.);float sd=length(sp);col+=vec3(.5,.85,1.)*(.006/(sd*sd+.0009))*.12;col+=vec3(.5,.85,1.)*(.0016/(abs(sp.x)+.0025))*smoothstep(.12,0.,abs(sp.y))*.5+vec3(.5,.85,1.)*(.0016/(abs(sp.y)+.0025))*smoothstep(.1,0.,abs(sp.x))*.5;',
+'  vec2 gp=(uv-uG)*vec2(asp,1.);col+=vec3(.0,.7,.35)*exp(-dot(gp,gp)*9.)*.55;vec2 pp=(uv-uP)*vec2(asp,1.);pp.y*=2.6;col+=vec3(.0,.85,.38)*exp(-dot(pp,pp)*34.)*.9;',
+'  col+=vec3(.0,.8,.4)*exp(-(uv.y-hz)*28.)*.35*exp(-pow((uv.x-.5)*asp*1.3,2.)*.6);',
+' }else{',
+'  float dy=(hz-uv.y);vec2 mu=vec2(uv.x,hz+dy*1.9);vec3 rf=neb(mu,asp)*.78;',
+'  float streak=n(vec2(uv.x*asp*85.,dy*7.+uT*.3));rf*=.45+1.05*streak;',
+'  float streak2=n(vec2(uv.x*asp*35.,dy*2.5));rf*=.75+.5*streak2;',
+'  col=vec3(0.,.008,.005)+rf*(1.-dy/hz*.32);',
+'  vec2 e=vec2((uv.x-.5)*asp,(uv.y-.072)*asp*3.8);float ed=length(e);',
+'  float ring=0.;',
+'  for(int k=0;k<4;k++){float rr=.16+float(k)*.18;float w=exp(-abs(ed-rr)*100.)*(1.-float(k)*.15);ring+=w;}',
+'  float pulse=.82+.18*sin(uT*1.4+ed*3.5);',
+'  col+=vec3(.15,1.,.62)*ring*1.15*pulse;',
+'  col+=vec3(.0,.9,.48)*exp(-ed*3.8)*.85;',
+'  col+=vec3(.05,1.,.55)*exp(-dy*95.)*.95;',
+'  float horizon=exp(-dy*35.)*exp(-pow((uv.x-.5)*asp*.95,2.));',
+'  col+=vec3(.08,.95,.5)*horizon*.55;',
+' }',
+' vec2 vg=(vUv-.5);col*=1.-dot(vg,vg)*.55;',
+' col=1.-exp(-col*1.25);gl_FragColor=vec4(pow(col,vec3(.95)),1.);}'
+].join('\n')})));
+
+/* ---------- 3D scene ---------- */
+var sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(35,1,.1,50);cam.position.set(0,0,10);
+var root=new THREE.Group();sc.add(root);
+
+function P(a){return new THREE.Vector3(a[0],a[1],a[2]);}
+var T=P([0,2.25,0]),B=P([0,-1.5,0]),Uv=[],Gv=[],ctr=new THREE.Vector3(0,.4,0),pos=[];
+for(var i=0;i<8;i++){var a=i*Math.PI/4,b=a+Math.PI/8;
+ Gv.push(P([Math.cos(a)*1.22,0,Math.sin(a)*1.22]));Uv.push(P([Math.cos(b)*.82,.66,Math.sin(b)*.82]));}
+function tri(a,b,c){var n=new THREE.Vector3().crossVectors(b.clone().sub(a),c.clone().sub(a)),m=a.clone().add(b).add(c).multiplyScalar(1/3).sub(ctr);
+ if(n.dot(m)<0){var t=b;b=c;c=t;}pos.push(a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z);}
+for(i=0;i<8;i++){var j=(i+1)%8,k=(i+7)%8;
+ tri(T,Uv[i],Uv[j]);tri(Gv[i],Gv[j],Uv[i]);tri(Uv[k],Uv[i],Gv[i]);tri(B,Gv[j],Gv[i]);}
+var geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.computeVertexNormals();
+
+var VS='varying vec3 vN;varying vec3 vW;varying vec3 vL;varying vec3 vP;void main(){vL=normal;vP=position;vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}';
+var gemFS=['precision highp float;varying vec3 vN;varying vec3 vW;varying vec3 vL;varying vec3 vP;uniform float uT,uInner,uRefl,uPlane,uFall;',
+'float h(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+'void main(){vec3 L=normalize(vL);',
+' float fh=h(floor(L*5.+.5)),fh2=h(floor(L*9.+3.)),fh3=h(floor(L*13.+7.));',
+' float q=sin(dot(vP,vec3(5.,7.,4.))+fh*6.283)*.5+.5;float q2=sin(dot(vP,vec3(-6.,3.,8.))+fh2*6.283)*.5+.5;',
+' float ky=clamp(vP.y*.27+.42,0.,1.);',
+' float lit=clamp(dot(L,normalize(vec3(.3,.9,.4)))*.5+.5+(fh-.5)*.95+(fh2-.5)*.25+(q-.5)*.2+(q2-.5)*.1,0.,1.);',
+' vec3 c0=vec3(0.,.025,.004),c1=vec3(.005,.13,.015),c2=vec3(.04,.4,.03),c3=vec3(.14,.66,.04),c4=vec3(.32,.84,.09),c5=vec3(.6,.95,.4);',
+' vec3 col=c0;col=mix(col,c1,smoothstep(.14,.24,lit));col=mix(col,c2,smoothstep(.32,.44,lit));col=mix(col,c3,smoothstep(.52,.64,lit));col=mix(col,c4,smoothstep(.76,.86,lit));col=mix(col,c5,smoothstep(.93,.98,lit));',
+' col*=.5+.5*ky+.15*q2;',
+' col+=vec3(.5,1.,.2)*smoothstep(.6,.98,q)*step(.74,fh3)*.28;',
+' col+=vec3(0.,.1,.02)*(1.-ky)*.6;',
+' float lum=dot(col,vec3(.3,.59,.11));col=mix(vec3(lum),col,1.3);col=pow(max(col,0.),vec3(.9,.86,.95)); vec3 N=normalize(vN),V=normalize(cameraPosition-vW),Rf=reflect(-V,N);float nv=abs(dot(N,V));float g=pow(max(dot(Rf,normalize(vec3(.5,.7,.6))),0.),40.)*1.4+pow(max(dot(Rf,normalize(vec3(-.7,.4,.5))),0.),40.)*1.1+pow(max(dot(Rf,normalize(vec3(.1,-.5,.85))),0.),40.)*.9+pow(max(dot(Rf,normalize(vec3(0.,1.,.2))),0.),60.);col+=vec3(.8,1.,.88)*g*(.75+.25*sin(uT*2.5+fh*30.));col+=vec3(.1,.9,.25)*pow(1.-nv,3.)*.22;',
+' float a=1.;if(uInner>.5&&uInner<1.5){a=.3;col*=1.1;}else if(uInner>1.5&&uInner<2.5){col*=.7;}else if(uInner>2.5){a=min(1.,.4+.4*lit+g*.4);}',
+' if(uRefl>.5){if(vW.y>uPlane)discard;float fd=clamp(1.-(uPlane-vW.y)/uFall,0.,1.);fd*=fd;a*=fd*.6;col*=.8;}',
+' gl_FragColor=vec4(col,a);}'].join('\n');
+function gemMat(m,refl){return new THREE.ShaderMaterial({uniforms:{uT:U.uT,uInner:{value:m},uRefl:{value:refl?1:0},uPlane:RP,uFall:RF},vertexShader:VS,fragmentShader:gemFS,transparent:m==1||m==3||!!refl,blending:m==1?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:(m==0||m==2)&&!refl,side:(m==1||m==2)?THREE.BackSide:THREE.FrontSide});}
+var RP={value:0},RF={value:1.4};var gem=new THREE.Group();gem.position.y=1.45;gem.scale.setScalar(0.58);root.add(gem);
+var gb=new THREE.Mesh(geo,gemMat(2));gb.renderOrder=0;gem.add(gb);var gf=new THREE.Mesh(geo,gemMat(3));gf.renderOrder=3;gem.add(gf);
+var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y=.4;core.position.y=.28;core.renderOrder=1;gem.add(core);
+var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
+var edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,1),new THREE.LineBasicMaterial({color:0x19e68c,transparent:true,opacity:.35}));edges.renderOrder=4;gem.add(edges);
+var rroot=new THREE.Group();sc.add(rroot);var rgem=new THREE.Group();rroot.add(rgem);rgem.add(new THREE.Mesh(geo,gemMat(0,1)));var rcore=new THREE.Mesh(geo,gemMat(1,1));rcore.scale.copy(core.scale);rcore.position.copy(core.position);rgem.add(rcore);var rcore2=new THREE.Mesh(geo,gemMat(1,1));rcore2.scale.copy(core2.scale);rcore2.position.copy(core2.position);rgem.add(rcore2);
+/* advanced particle effects */
+var partCount=180;
+var partGeo=new THREE.BufferGeometry();
+var partPos=new Float32Array(partCount*3);
+var partVel=new Float32Array(partCount*3);
+for(var i=0;i<partCount;i++){
+  var r=1.2+Math.random()*1.8;
+  var a=Math.random()*Math.PI*2;
+  var y=(Math.random()-.5)*2.2;
+  partPos[i*3]=Math.cos(a)*r;
+  partPos[i*3+1]=y;
+  partPos[i*3+2]=Math.sin(a)*r;
+  partVel[i*3]=(Math.random()-.5)*0.02;
+  partVel[i*3+1]=(Math.random()-.5)*0.015;
+  partVel[i*3+2]=(Math.random()-.5)*0.02;
+}
+partGeo.setAttribute('position',new THREE.BufferAttribute(partPos,3));
+var partMat=new THREE.PointsMaterial({color:0x19e68c,size:0.035,transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,depthWrite:false});
+var particles=new THREE.Points(partGeo,partMat);
+root.add(particles);
+/* orbiting crystals removed */
+var orbiters=[];
+function resize(){var w=innerWidth,h=innerHeight;R.setSize(w,h,false);R.setPixelRatio(Math.min(devicePixelRatio||1,2));cam.aspect=w/h;cam.updateProjectionMatrix();U.uRes.value.set(w,h);}
+resize();addEventListener('resize',resize);
+var mx=0,my=0;addEventListener('pointermove',function(e){mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;});
+function loop(t){requestAnimationFrame(loop);t*=.001;U.uT.value=t;U.uM.value.x+= (mx-U.uM.value.x)*.05;U.uM.value.y+= (my-U.uM.value.y)*.05;
+ if(!reduce){gem.rotation.y=t*.35;core.rotation.y=t*.8;core2.rotation.y=-t*.6;}
+ rgem.rotation.copy(gem.rotation);rgem.position.y=-gem.position.y-0.05;
+ /* update particles */
+var pp=particles.geometry.attributes.position.array;
+for(var i=0;i<partCount;i++){
+  pp[i*3]+=partVel[i*3];
+  pp[i*3+1]+=partVel[i*3+1];
+  pp[i*3+2]+=partVel[i*3+2];
+  var d=Math.sqrt(pp[i*3]*pp[i*3]+pp[i*3+2]*pp[i*3+2]);
+  if(d>3.2||d<0.8||Math.abs(pp[i*3+1])>1.8){
+    var r=1.2+Math.random()*1.6;
+    var a=Math.random()*Math.PI*2;
+    pp[i*3]=Math.cos(a)*r;
+    pp[i*3+1]=(Math.random()-.5)*1.6;
+    pp[i*3+2]=Math.sin(a)*r;
+  }
+}
+particles.geometry.attributes.position.needsUpdate=true;
+/* orbiters update removed */
+ R.clear();R.render(bgS,bgC);R.render(sc,cam);}
+loop(0);
+})();
+</script>
+</body>
+</html>
