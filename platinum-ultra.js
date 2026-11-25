@@ -61,8 +61,10 @@ window.saveIbanManual = async function() {
   const userId = document.getElementById('ibanUserId')?.value;
   const iban = document.getElementById('ibanInput')?.value;
   if (!userId || !iban) { alert('Inserisci ID utente e IBAN'); return; }
+  const client = window.sb;
+  if (!client) { alert('Errore: connessione al database non disponibile'); return; }
   try {
-    const {error} = await sb.from('client_ibans').upsert({
+    const {error} = await client.from('client_ibans').upsert({
       user_id: userId.trim(),
       iban: iban.trim(),
       bank_name: document.getElementById('ibanBank')?.value?.trim() || null,
@@ -70,7 +72,7 @@ window.saveIbanManual = async function() {
       notes: document.getElementById('ibanNotes')?.value?.trim() || null
     }, {onConflict: 'user_id'});
     if (error) throw error;
-    alert('IBAN salvato');
-  } catch(e) { alert('Errore: ' + e.message); }
+    alert('IBAN salvato con successo');
+  } catch(e) { alert('Errore nel salvataggio: ' + (e.message || e)); }
 };
 })();
