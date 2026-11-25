@@ -282,3 +282,23 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
 #authScreen.ye-cinematic .ye-auth-footer {
   background: transparent !important;
 }
+
+/* Transparent inputs even on focus */
+#authScreen.ye-cinematic .auth-box input,
+#authScreen.ye-cinematic .auth-box input:focus,
+#authScreen.ye-cinematic .auth-box input:active {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(90,255,180,.35) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+#authScreen.ye-cinematic .auth-box input::placeholder {
+  color: rgba(220,245,232,.55) !important;
+}
+#authScreen.ye-cinematic .auth-box input:focus {
+  border-color: rgba(100,255,190,.7) !important;
+  box-shadow: 0 0 0 2px rgba(25,230,140,.15) !important;
+}
