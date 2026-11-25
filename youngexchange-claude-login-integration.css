@@ -283,129 +283,19 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
   background: transparent !important;
 }
 
-/* Transparent inputs even on focus */
+/* Restore semi-transparent green borders on inputs */
 #authScreen.ye-cinematic .auth-box input,
 #authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .auth-box input:active {
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 1px solid rgba(90,255,180,.35) !important;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-#authScreen.ye-cinematic .auth-box input::placeholder {
-  color: rgba(220,245,232,.55) !important;
-}
-#authScreen.ye-cinematic .auth-box input:focus {
-  border-color: rgba(100,255,190,.7) !important;
-  box-shadow: 0 0 0 2px rgba(25,230,140,.15) !important;
-}
-
-/* Force fully transparent inputs always - no opaque border */
-#authScreen.ye-cinematic .auth-box input,
-#authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .auth-box input:active,
-#authScreen.ye-cinematic .auth-box input:hover,
 #authScreen.ye-cinematic .password-field input,
 #authScreen.ye-cinematic .password-field input:focus {
+  border: 1px solid rgba(90,255,180,.45) !important;
+  border-color: rgba(90,255,180,.45) !important;
   background: transparent !important;
-  background-color: transparent !important;
-  border: 1px solid rgba(90,255,180,.25) !important;
-  border-color: rgba(90,255,180,.25) !important;
   box-shadow: none !important;
   outline: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
+  border-radius: 11px !important;
 }
 #authScreen.ye-cinematic .auth-box input:focus,
 #authScreen.ye-cinematic .password-field input:focus {
-  border-color: rgba(100,255,190,.45) !important;
-  box-shadow: 0 0 0 1px rgba(25,230,140,.12) !important;
-}
-
-/* Completely remove all borders from inputs */
-#authScreen.ye-cinematic .auth-box input,
-#authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .auth-box input:active,
-#authScreen.ye-cinematic .auth-box input:hover,
-#authScreen.ye-cinematic .password-field,
-#authScreen.ye-cinematic .password-field input,
-#authScreen.ye-cinematic .password-field input:focus,
-#authScreen.ye-cinematic .password-field input:active {
-  border: none !important;
-  border-width: 0 !important;
-  border-style: none !important;
-  border-color: transparent !important;
-  outline: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-#authScreen.ye-cinematic .password-field {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-/* Keep semi-transparent borders, remove black focus outline */
-#authScreen.ye-cinematic .auth-box input,
-#authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .auth-box input:active,
-#authScreen.ye-cinematic .password-field,
-#authScreen.ye-cinematic .password-field input,
-#authScreen.ye-cinematic .password-field input:focus,
-#authScreen.ye-cinematic .password-field input:active {
-  border: 1px solid rgba(90,255,180,.35) !important;
-  border-color: rgba(90,255,180,.35) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-#authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .password-field input:focus {
-  border-color: rgba(100,255,190,.55) !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Aggressive: kill black focus border forever */
-#authScreen.ye-cinematic .auth-box input:focus,
-#authScreen.ye-cinematic .auth-box input:focus-visible,
-#authScreen.ye-cinematic .password-field:focus-within,
-#authScreen.ye-cinematic .password-field input:focus,
-#authScreen.ye-cinematic .password-field input:focus-visible,
-#authScreen.ye-cinematic input[type=password]:focus,
-#authScreen.ye-cinematic input[type=email]:focus {
-  border: 1px solid rgba(90,255,180,.35) !important;
-  border-color: rgba(90,255,180,.35) !important;
-  box-shadow: none !important;
-  outline: none !important;
-  outline-offset: 0 !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-}
-#authScreen.ye-cinematic .password-field:focus-within {
-  border: 1px solid rgba(90,255,180,.35) !important;
-  box-shadow: none !important;
-}
-
-/* Ensure tabs are always clickable */
-#authScreen.ye-cinematic .auth-box .tabs,
-#authScreen.ye-cinematic .auth-box .tabs button,
-#authScreen.ye-cinematic #tabRegister,
-#authScreen.ye-cinematic #tabLogin {
-  pointer-events: auto !important;
-  position: relative !important;
-  z-index: 100 !important;
+  border-color: rgba(120,255,200,.7) !important;
 }
