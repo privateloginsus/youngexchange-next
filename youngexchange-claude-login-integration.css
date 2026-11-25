@@ -326,3 +326,29 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
   border-color: rgba(100,255,190,.45) !important;
   box-shadow: 0 0 0 1px rgba(25,230,140,.12) !important;
 }
+
+/* Completely remove all borders from inputs */
+#authScreen.ye-cinematic .auth-box input,
+#authScreen.ye-cinematic .auth-box input:focus,
+#authScreen.ye-cinematic .auth-box input:active,
+#authScreen.ye-cinematic .auth-box input:hover,
+#authScreen.ye-cinematic .password-field,
+#authScreen.ye-cinematic .password-field input,
+#authScreen.ye-cinematic .password-field input:focus,
+#authScreen.ye-cinematic .password-field input:active {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+#authScreen.ye-cinematic .password-field {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
