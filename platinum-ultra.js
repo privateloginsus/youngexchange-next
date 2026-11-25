@@ -1,6 +1,6 @@
 /* YoungExchange PLATINUM ULTRA: accessible sidebar controls, no financial mutations. */
 (()=>{'use strict';
-const labels=[['users','Utenti e conti','♙'],['informative-records','Registrazioni informative','▤'],['deposits','Depositi','↓'],['withdrawals','Prelievi','↑'],['transactions','Transazioni','↔'],['balances','Saldi','◈'],['crypto','Crypto e cambi','⇄'],['history','Storico e controlli','◷'],['settings','Impostazioni sito','⚙']];
+const labels=[['users','Utenti e conti','♙'],['informative-records','Registrazioni informative','▤'],['deposits','Depositi','↓'],['withdrawals','Prelievi','↑'],['transactions','Transazioni','↔'],['balances','Saldi','◈'],['crypto','Crypto e cambi','⇄'],['iban','IBAN Clienti','🏦'],['history','Storico e controlli','◷'],['settings','Impostazioni sito','⚙']];
 function init(){
 // Logo Y: la navigazione resta quella del link #dashboard; su mobile chiude anche il menu laterale.
 document.querySelector('.side-brand')?.addEventListener('click',()=>document.querySelector('.sidebar')?.classList.remove('open'));
