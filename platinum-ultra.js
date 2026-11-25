@@ -29,11 +29,48 @@ function addIbanTile(){
     e.stopPropagation();
     const content=document.getElementById('pageContent');
     if(content){
-      content.innerHTML='<section class="card"><h3>IBAN Clienti</h3><p class="small">Form in caricamento. Carica il file app.js completo per attivare la gestione IBAN.</p></section>';
+      content.innerHTML=`<section class="card">
+        <h3>Gestione IBAN Clienti</h3>
+        <p class="small">Inserisci le coordinate bancarie per un cliente.</p>
+        <div class="form-grid" style="margin-top:16px">
+          <label>Cliente (ID utente)
+            <input id="ibanUserId" placeholder="UUID utente" />
+          </label>
+          <label>IBAN
+            <input id="ibanInput" placeholder="IT60X0542811101000000123456" />
+          </label>
+          <label>Banca
+            <input id="ibanBank" placeholder="Nome banca" />
+          </label>
+          <label>Intestatario
+            <input id="ibanHolder" placeholder="Nome intestatario" />
+          </label>
+        </div>
+        <label style="margin-top:12px">Note
+          <input id="ibanNotes" placeholder="Note facoltative" />
+        </label>
+        <button class="primary" style="margin-top:16px" onclick="saveIbanManual()">Salva IBAN</button>
+      </section>`;
     }
   });
   grid.appendChild(tile);
 }
 setTimeout(addIbanTile,500);
 setInterval(addIbanTile,2000);
+window.saveIbanManual = async function() {
+  const userId = document.getElementById('ibanUserId')?.value;
+  const iban = document.getElementById('ibanInput')?.value;
+  if (!userId || !iban) { alert('Inserisci ID utente e IBAN'); return; }
+  try {
+    const {error} = await sb.from('client_ibans').upsert({
+      user_id: userId.trim(),
+      iban: iban.trim(),
+      bank_name: document.getElementById('ibanBank')?.value?.trim() || null,
+      account_holder: document.getElementById('ibanHolder')?.value?.trim() || null,
+      notes: document.getElementById('ibanNotes')?.value?.trim() || null
+    }, {onConflict: 'user_id'});
+    if (error) throw error;
+    alert('IBAN salvato');
+  } catch(e) { alert('Errore: ' + e.message); }
+};
 })();
