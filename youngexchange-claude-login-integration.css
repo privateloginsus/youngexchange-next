@@ -399,3 +399,13 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
   border: 1px solid rgba(90,255,180,.35) !important;
   box-shadow: none !important;
 }
+
+/* Ensure tabs are always clickable */
+#authScreen.ye-cinematic .auth-box .tabs,
+#authScreen.ye-cinematic .auth-box .tabs button,
+#authScreen.ye-cinematic #tabRegister,
+#authScreen.ye-cinematic #tabLogin {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 100 !important;
+}
