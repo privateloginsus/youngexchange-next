@@ -283,19 +283,20 @@ html:has(#authScreen:not([hidden])),body:has(#authScreen:not([hidden])){margin:0
   background: transparent !important;
 }
 
-/* Restore semi-transparent green borders on inputs */
+/* Visible but transparent borders */
 #authScreen.ye-cinematic .auth-box input,
 #authScreen.ye-cinematic .auth-box input:focus,
 #authScreen.ye-cinematic .password-field input,
 #authScreen.ye-cinematic .password-field input:focus {
-  border: 1px solid rgba(90,255,180,.45) !important;
-  border-color: rgba(90,255,180,.45) !important;
-  background: transparent !important;
+  border: 1px solid rgba(90,255,180,.55) !important;
+  border-color: rgba(90,255,180,.55) !important;
+  background: rgba(2,20,15,.25) !important;
   box-shadow: none !important;
   outline: none !important;
   border-radius: 11px !important;
 }
 #authScreen.ye-cinematic .auth-box input:focus,
 #authScreen.ye-cinematic .password-field input:focus {
-  border-color: rgba(120,255,200,.7) !important;
+  border-color: rgba(130,255,210,.8) !important;
+  background: rgba(2,25,18,.35) !important;
 }
