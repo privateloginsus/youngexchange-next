@@ -84,9 +84,13 @@ h1{font-size:clamp(19px,2.6vh + 4px,24px);font-weight:600;letter-spacing:-.025em
 .btn{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 16px rgba(25,230,140,.28)}
 .fld input{background:rgba(0,10,7,.55);border-color:rgba(90,255,180,.18)}
 </style>
-<style>header,.card,footer{display:none!important}.page{pointer-events:none;padding:0!important}.page main{justify-content:flex-start!important}#stage{flex:none!important;height:43vh!important;min-height:200px!important}#gl{pointer-events:none!important}</style></head>
+<style>header,.card,footer{display:none!important}.page{pointer-events:none;padding:0!important}.page main{justify-content:flex-start!important}#stage{flex:none!important;height:43vh!important;min-height:200px!important}#gl{pointer-events:none!important}
+.ye-top-brand{position:fixed;top:18px;left:24px;z-index:10;font-family:Inter,system-ui,sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;color:#fff;pointer-events:none}
+.ye-top-brand b{color:#19e68c}
+</style></head>
 <body>
 <canvas id="gl" aria-hidden="true"></canvas>
+<div class="ye-top-brand">Young<b>Exchange</b></div>
 <div class="page">
   <header>
     <a class="logo" href="#" aria-label="YoungExchange">
@@ -201,7 +205,7 @@ var gemFS=['precision highp float;varying vec3 vN;varying vec3 vW;varying vec3 v
 ' if(uRefl>.5){if(vW.y>uPlane)discard;float fd=clamp(1.-(uPlane-vW.y)/uFall,0.,1.);fd*=fd;a*=fd*.6;col*=.8;}',
 ' gl_FragColor=vec4(col,a);}'].join('\n');
 function gemMat(m,refl){return new THREE.ShaderMaterial({uniforms:{uT:U.uT,uInner:{value:m},uRefl:{value:refl?1:0},uPlane:RP,uFall:RF},vertexShader:VS,fragmentShader:gemFS,transparent:m==1||m==3||!!refl,blending:m==1?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:(m==0||m==2)&&!refl,side:(m==1||m==2)?THREE.BackSide:THREE.FrontSide});}
-var RP={value:0},RF={value:1};var gem=new THREE.Group();root.add(gem);
+var RP={value:0},RF={value:1};var gem=new THREE.Group();gem.scale.setScalar(0.62);gem.position.y=1.85;root.add(gem);
 var gb=new THREE.Mesh(geo,gemMat(2));gb.renderOrder=0;gem.add(gb);var gf=new THREE.Mesh(geo,gemMat(3));gf.renderOrder=3;gem.add(gf);
 var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y=.4;core.position.y=.28;core.renderOrder=1;gem.add(core);
 var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
@@ -225,9 +229,9 @@ var particleGeo = new THREE.BufferGeometry();
 particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
 var particleMat = new THREE.PointsMaterial({
   color: 0x4dffaa,
-  size: 0.045,
+  size: 0.028,
   transparent: true,
-  opacity: 0.85,
+  opacity: 0.75,
   blending: THREE.AdditiveBlending,
   depthWrite: false
 });
