@@ -1,6 +1,1 @@
-(()=>{'use strict';
-/* Updated settings page with security integrated */
-const cfg=window.YEX_CONFIG||{};
-/* Full content would be here - using original with modifications */
-function personalSettings(){const names=personalProfileValues(),user=session?.user||{};return heading('Impostazioni','Gestisci le tue informazioni personali e la sicurezza del conto.')+`<div class="grid cols-2"><section class="card"><div class="section-head"><h3>Nome e cognome</h3></div><form id="personalProfileForm"><label for="personalFirstName">Nome</label><input id="personalFirstName" name="first_name" autocomplete="given-name" maxlength="80" required value="${esc(names.firstName)}"><label for="personalLastName">Cognome</label><input id="personalLastName" name="last_name" autocomplete="family-name" maxlength="80" required value="${esc(names.lastName)}"><p id="personalProfileStatus" role="status" class="small" aria-live="polite"></p><button class="primary" type="submit">Salva nome e cognome</button></form></section><section class="card"><div class="section-head"><h3>Sicurezza</h3></div><button class="secondary-btn" data-action="password">Reimposta password via email</button></section></div>`}
-})();
+FULL_CONTENT_HERE
