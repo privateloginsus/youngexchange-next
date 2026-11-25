@@ -207,26 +207,54 @@ var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y
 var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
 var edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,1),new THREE.LineBasicMaterial({color:0x19e68c,transparent:true,opacity:.35}));edges.renderOrder=4;gem.add(edges);
 var rroot=new THREE.Group();sc.add(rroot);var rgem=new THREE.Group();rroot.add(rgem);rgem.add(new THREE.Mesh(geo,gemMat(0,1)));var rcore=new THREE.Mesh(geo,gemMat(1,1));rcore.scale.copy(core.scale);rcore.position.copy(core.position);rgem.add(rcore);var rcore2=new THREE.Mesh(geo,gemMat(1,1));rcore2.scale.copy(core2.scale);rcore2.position.copy(core2.position);rgem.add(rcore2);
-/* chrome rings */
-var chrome=new THREE.ShaderMaterial({uniforms:{uT:U.uT},vertexShader:VS,fragmentShader:[
-'precision highp float;varying vec3 vN;varying vec3 vW;uniform float uT;',
-'void main(){vec3 N=normalize(vN),V=normalize(cameraPosition-vW),Rf=reflect(-V,N);float nv=abs(dot(N,V));',
-' vec3 col=vec3(.05,.25,.15)+vec3(.2,.8,.5)*pow(1.-nv,2.5);',
-' col+=vec3(.6,1.,.8)*pow(max(dot(Rf,normalize(vec3(.4,.6,.5))),0.),32.);',
-' col+=vec3(.3,.9,.6)*pow(max(dot(Rf,normalize(vec3(-.5,.3,.7))),0.),20.)*.6;',
-' gl_FragColor=vec4(col,1.);}'].join('\n'),side:THREE.DoubleSide});
-var rings=[];
-[[1.55,.4,.15,0,.8],[1.85,-.3,.05,.5,.55],[2.15,.2,-.1,1.2,.35]].forEach(function(c,ix){
- var g=new THREE.Group(),tor=new THREE.Mesh(new THREE.TorusGeometry(c[0],.042,20,180),chrome);g.add(tor);
- var piv=new THREE.Group(),sp=new THREE.Mesh(new THREE.SphereGeometry(.11,32,24),chrome);sp.position.x=c[0];piv.add(sp);g.add(piv);
- g.rotation.set(c[1],c[3],c[2]);g.position.y=.3;root.add(g);rings.push({g:g,piv:piv,s:c[4],ph:ix*2.1,c:c});});
+
+/* floating particles around the crystal */
+var particleCount = 180;
+var particlePositions = new Float32Array(particleCount * 3);
+var particleSpeeds = [];
+for(var i=0; i<particleCount; i++){
+  var radius = 1.8 + Math.random() * 2.2;
+  var theta = Math.random() * Math.PI * 2;
+  var phi = Math.random() * Math.PI;
+  particlePositions[i*3] = radius * Math.sin(phi) * Math.cos(theta);
+  particlePositions[i*3+1] = radius * Math.cos(phi) * 0.7 + 0.3;
+  particlePositions[i*3+2] = radius * Math.sin(phi) * Math.sin(theta);
+  particleSpeeds.push((0.15 + Math.random()*0.25) * (Math.random()>0.5?1:-1));
+}
+var particleGeo = new THREE.BufferGeometry();
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+var particleMat = new THREE.PointsMaterial({
+  color: 0x4dffaa,
+  size: 0.045,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+var particles = new THREE.Points(particleGeo, particleMat);
+root.add(particles);
+
 function resize(){var w=innerWidth,h=innerHeight;R.setSize(w,h,false);R.setPixelRatio(Math.min(devicePixelRatio||1,2));cam.aspect=w/h;cam.updateProjectionMatrix();U.uRes.value.set(w,h);}
 resize();addEventListener('resize',resize);
 var mx=0,my=0;addEventListener('pointermove',function(e){mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;});
 function loop(t){requestAnimationFrame(loop);t*=.001;U.uT.value=t;U.uM.value.x+= (mx-U.uM.value.x)*.05;U.uM.value.y+= (my-U.uM.value.y)*.05;
- if(!reduce){gem.rotation.y=t*.35;core.rotation.y=t*.8;core2.rotation.y=-t*.6;}
+ if(!reduce){
+  gem.rotation.y=t*.35;core.rotation.y=t*.8;core2.rotation.y=-t*.6;
+  // animate particles
+  var pos = particleGeo.attributes.position.array;
+  for(var i=0; i<particleCount; i++){
+    var i3 = i*3;
+    var speed = particleSpeeds[i];
+    var angle = t * speed + i;
+    var r = Math.sqrt(pos[i3]*pos[i3] + pos[i3+2]*pos[i3+2]);
+    pos[i3] = Math.cos(angle) * r;
+    pos[i3+2] = Math.sin(angle) * r;
+    pos[i3+1] += Math.sin(t*1.2 + i*0.3) * 0.0015;
+  }
+  particleGeo.attributes.position.needsUpdate = true;
+  particles.rotation.y = t * 0.08;
+ }
  rgem.rotation.copy(gem.rotation);rgem.position.y=-gem.position.y-.2;
- rings.forEach(function(o,i){o.g.rotation.y=o.c[3]+t*o.s*(i?1:-1);o.g.rotation.z=o.c[2]+Math.sin(t*.25+o.ph)*.12;o.piv.rotation.z=t*(.35+i*.12)+o.ph;});
  R.clear();R.render(bgS,bgC);R.render(sc,cam);}
 loop(0);
 })();
