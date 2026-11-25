@@ -228,12 +228,13 @@ for(var i=0; i<particleCount; i++){
 var particleGeo = new THREE.BufferGeometry();
 particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
 var particleMat = new THREE.PointsMaterial({
-  color: 0x4dffaa,
-  size: 0.07,
+  color: 0x8fffe0,
+  size: 0.018,
   transparent: true,
-  opacity: 0.98,
+  opacity: 1.0,
   blending: THREE.AdditiveBlending,
-  depthWrite: false
+  depthWrite: false,
+  sizeAttenuation: true
 });
 var particles = new THREE.Points(particleGeo, particleMat);
 root.add(particles);
