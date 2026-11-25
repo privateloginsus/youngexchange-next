@@ -213,7 +213,7 @@ var edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,1),new THREE.LineBa
 var rroot=new THREE.Group();sc.add(rroot);var rgem=new THREE.Group();rroot.add(rgem);rgem.add(new THREE.Mesh(geo,gemMat(0,1)));var rcore=new THREE.Mesh(geo,gemMat(1,1));rcore.scale.copy(core.scale);rcore.position.copy(core.position);rgem.add(rcore);var rcore2=new THREE.Mesh(geo,gemMat(1,1));rcore2.scale.copy(core2.scale);rcore2.position.copy(core2.position);rgem.add(rcore2);
 
 /* floating particles around the crystal */
-var particleCount = 180;
+var particleCount = 240;
 var particlePositions = new Float32Array(particleCount * 3);
 var particleSpeeds = [];
 for(var i=0; i<particleCount; i++){
@@ -229,9 +229,9 @@ var particleGeo = new THREE.BufferGeometry();
 particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
 var particleMat = new THREE.PointsMaterial({
   color: 0x4dffaa,
-  size: 0.028,
+  size: 0.055,
   transparent: true,
-  opacity: 0.75,
+  opacity: 0.95,
   blending: THREE.AdditiveBlending,
   depthWrite: false
 });
