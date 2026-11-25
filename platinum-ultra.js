@@ -24,10 +24,13 @@ function addIbanTile(){
   tile.className='ye-plat-admin-tile';
   tile.dataset.adminSection='iban';
   tile.innerHTML='<span class="ye-plat-admin-tile-icon">🏦</span><span><strong>IBAN Clienti</strong><small>Gestione coordinate bancarie</small></span><span class="ye-plat-admin-chevron">↗</span>';
-  tile.addEventListener('click',async()=>{
-    if(typeof adminSelectSection==='function'){await adminSelectSection('iban')}
-    else if(typeof renderAdminIbanSection==='function'){$('pageContent').innerHTML=await renderAdminIbanSection()}
-    else{$('pageContent').innerHTML='<section class=card><h3>IBAN Clienti</h3><p class=small>Sezione in caricamento...</p></section>'}
+  tile.addEventListener('click',function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    const content=document.getElementById('pageContent');
+    if(content){
+      content.innerHTML='<section class="card"><h3>IBAN Clienti</h3><p class="small">Form in caricamento. Carica il file app.js completo per attivare la gestione IBAN.</p></section>';
+    }
   });
   grid.appendChild(tile);
 }
