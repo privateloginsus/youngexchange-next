@@ -146,11 +146,11 @@ fragmentShader:[
 'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
 'float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}',
 'float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}',
-'vec3 neb(vec2 uv,float asp){vec2 q=(uv-.5)*vec2(asp,1.)*2.1;vec2 qf=q+vec2(-uT*.022,uT*.006)+uM*.03;q+=vec2(uT*.055,uT*.016)-uM*.07;',
-' float w=fbm(q+fbm(q*1.6+uT*.05)*1.3);float d=fbm(q*1.3+w*1.8+fbm(qf*.9)*.7);',
-' float side=.35+.65*smoothstep(.0,.85,abs(uv.x-.5)*2.);',
-' float c=smoothstep(.38,.8,d)*side;float fil=pow(smoothstep(.5,.9,w),3.)*side;',
-' vec3 col=vec3(0.,.03,.02)*(1.+d)+vec3(.0,.55,.28)*c*.85+vec3(.15,1.,.62)*fil*.9+vec3(.0,.35,.5)*pow(c,2.)*.35;',
+'vec3 neb(vec2 uv,float asp){vec2 q=(uv-.5)*vec2(asp,1.)*1.85;vec2 qf=q+vec2(-uT*.018,uT*.008)+uM*.04;q+=vec2(uT*.04,uT*.012)-uM*.05;',
+' float w=fbm(q+fbm(q*1.4+uT*.04)*1.6);float d=fbm(q*1.15+w*2.1+fbm(qf*.75)*.9);',
+' float side=.25+.75*smoothstep(.0,.9,abs(uv.x-.5)*2.);',
+' float c=smoothstep(.32,.78,d)*side;float fil=pow(smoothstep(.42,.88,w),2.2)*side;',
+' vec3 col=vec3(0.,.025,.018)*(1.+d*1.2)+vec3(.0,.48,.24)*c*1.1+vec3(.12,.95,.55)*fil*1.05+vec3(.0,.32,.45)*pow(c,1.8)*.45;',
 ' return col;}',
 'float stars(vec2 uv,float asp,float sc,float th){vec2 p=uv*vec2(asp,1.)*sc;vec2 i=floor(p),f=fract(p)-.5;float r=h(i);if(r<th)return 0.;vec2 o=vec2(h(i+3.1),h(i+7.7))-.5;float d=length(f-o*.7);float b=(r-th)/(1.-th);return smoothstep(.09*(.4+b),0.,d)*(.5+b);}',
 'void main(){vec2 uv=vUv;float asp=uRes.x/uRes.y;float hz=.2;vec3 col;',
@@ -205,7 +205,7 @@ var gemFS=['precision highp float;varying vec3 vN;varying vec3 vW;varying vec3 v
 ' if(uRefl>.5){if(vW.y>uPlane)discard;float fd=clamp(1.-(uPlane-vW.y)/uFall,0.,1.);fd*=fd;a*=fd*.6;col*=.8;}',
 ' gl_FragColor=vec4(col,a);}'].join('\n');
 function gemMat(m,refl){return new THREE.ShaderMaterial({uniforms:{uT:U.uT,uInner:{value:m},uRefl:{value:refl?1:0},uPlane:RP,uFall:RF},vertexShader:VS,fragmentShader:gemFS,transparent:m==1||m==3||!!refl,blending:m==1?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:(m==0||m==2)&&!refl,side:(m==1||m==2)?THREE.BackSide:THREE.FrontSide});}
-var RP={value:0},RF={value:1};var gem=new THREE.Group();gem.scale.setScalar(0.38);gem.position.y=1.54;root.add(gem);
+var RP={value:0},RF={value:1};var gem=new THREE.Group();gem.scale.setScalar(0.47);gem.position.y=1.50;root.add(gem);
 var gb=new THREE.Mesh(geo,gemMat(2));gb.renderOrder=0;gem.add(gb);var gf=new THREE.Mesh(geo,gemMat(3));gf.renderOrder=3;gem.add(gf);
 var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y=.4;core.position.y=.28;core.renderOrder=1;gem.add(core);
 var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
