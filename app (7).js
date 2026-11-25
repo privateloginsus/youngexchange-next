@@ -1,0 +1,657 @@
+(()=>{'use strict';
+const cfg=window.YEX_CONFIG||{};const configured=cfg.supabasePublishableKey&&cfg.supabasePublishableKey.startsWith('sb_publishable_');const sb=configured&&window.supabase?window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{detectSessionInUrl:true,autoRefreshToken:true,persistSession:true}}):null;
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const fmt=(n,d=2)=>Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:d,maximumFractionDigits:d});const eur=n=>'€ '+fmt(n);const assets=[{id:'bitcoin',symbol:'BTC',name:'Bitcoin',icon:'₿'},{id:'ethereum',symbol:'ETH',name:'Ethereum',icon:'Ξ'},{id:'tether',symbol:'USDT',name:'Tether',icon:'₮'},{id:'solana',symbol:'SOL',name:'Solana',icon:'◎'},{id:'ripple',symbol:'XRP',name:'XRP',icon:'✕'},{id:'binancecoin',symbol:'BNB',name:'BNB',icon:'◇'}];let isAdmin=false,adminSelectedUser=null,adminStatusFilter='',session=null,profile=null,wallets=[],quotes={},history=[],selected='bitcoin',mode='login',lastFetch=0,loading=false;const toast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),5500)};
+function authMode(m){mode=m;$('tabLogin').classList.toggle('active',m==='login');$('tabRegister').classList.toggle('active',m==='register');$('nameWrap').hidden=m!=='register';$('passwordWrap').hidden=m==='forgot';$('forgotLink').hidden=m!=='login';$('authTitle').textContent=m==='register'?'Crea il tuo conto':m==='forgot'?'Recupera la password':m==='recovery'?'Imposta una nuova password':'Accedi al tuo conto';$('authDesc').textContent=m==='register'?'Inizia il tuo percorso con YoungExchange.':m==='forgot'?'Ti invieremo un link per reimpostare la password.':m==='recovery'?'Scegli una nuova password di almeno 12 caratteri.':'Gestisci i tuoi asset con un’esperienza semplice e moderna.';$('authSubmit').innerHTML=(m==='register'?'Crea account':m==='forgot'?'Invia link di recupero':m==='recovery'?'Aggiorna password':'Accedi')+' <span>↗</span>';$('password').required=m!=='forgot';$('email').required=m!=='recovery';$('email').closest('form').querySelector('label[for=email]').hidden=m==='recovery';$('email').hidden=m==='recovery';$('password').autocomplete=m==='register'?'new-password':'current-password';$('authNote').textContent=m==='register'?'Riceverai un’email per confermare il tuo indirizzo.':m==='forgot'?'Controlla anche la cartella spam.':'Accesso protetto tramite Supabase Auth.'}
+for(const b of document.querySelectorAll('[data-mode]'))b.addEventListener('click',()=>authMode(b.dataset.mode));$('forgotLink').addEventListener('click',()=>authMode('forgot'));$('togglePassword').addEventListener('click',()=>{$('password').type=$('password').type==='password'?'text':'password'});
+$('authForm').addEventListener('submit',async e=>{e.preventDefault();if(!sb){toast('Apri config.js e inserisci la tua Supabase Publishable Key per attivare l’accesso.');return}const email=$('email').value.trim(),password=$('password').value;const b=$('authSubmit');b.disabled=true;try{let result;if(mode==='recovery'){result=await sb.auth.updateUser({password});if(!result.error){toast('Password aggiornata. Accedi con la nuova password.');await sb.auth.signOut();exit()}}else if(mode==='register'){result=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname,data:{display_name:$('displayName').value.trim().slice(0,80)}}});if(!result.error)toast('Registrazione inviata. Controlla la tua email e conferma l’account.')}else if(mode==='forgot'){result=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(!result.error)toast('Se l’indirizzo è registrato, riceverai un link di recupero.')}else{result=await sb.auth.signInWithPassword({email,password});if(!result.error&&result.data.session)await enter(result.data.session)}if(result?.error)throw result.error}catch(err){toast('Operazione non riuscita: '+err.message)}finally{b.disabled=false}});
+async function enter(s){session=s;$('authScreen').hidden=true;$('appScreen').hidden=false;if(!document.getElementById('yeCorner')){const badge=document.createElement('div');badge.id='yeCorner';badge.className='ye-corner';badge.innerHTML='<span class="ye-orbit">Y</span><span>YoungExchange · Workspace</span>';document.body.append(badge);}const mail=s.user.email||'';$('avatar').textContent=mail.charAt(0).toUpperCase()||'Y';await loadPrivate();await checkAdmin();route();fetchQuotes();yeStartMarketStream();}function exit(){yeStopMarketStream();document.getElementById('yeCorner')?.remove();isAdmin=false;adminSelectedUser=null;const adminLink=$('adminNavLink');if(adminLink){adminLink.hidden=true;adminLink.style.display='none'};session=null;profile=null;wallets=[];$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('login')}
+async function loadPrivate(){if(!sb||!session)return;const id=session.user.id;const [p,w]=await Promise.all([sb.from('profiles').select('id,display_name,phone_verified,created_at').eq('id',id).maybeSingle(),sb.from('wallets').select('id,currency,balance,locked_balance').eq('user_id',id)]);if(p.error)toast('Profilo non disponibile: '+p.error.message);if(w.error)toast('Wallet non disponibili: '+w.error.message);profile=p.data||null;wallets=w.data||[]}
+async function checkAdmin(){isAdmin=false;try{const {data,error}=await sb.rpc('is_youngexchange_admin');if(error)throw error;isAdmin=data===true}catch(e){console.warn('Controllo amministratore non disponibile',e)}const link=$('adminNavLink');if(link){link.hidden=!isAdmin;link.style.display=isAdmin?'':'none'}}
+$('signout').addEventListener('click',async()=>{if(sb)await sb.auth.signOut();exit()});$('menuToggle').addEventListener('click',()=>document.querySelector('.sidebar').classList.toggle('open'));document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',()=>document.querySelector('.sidebar').classList.remove('open')));
+async function fetchQuotes(force=false){if(loading||(!force&&Date.now()-lastFetch<60000))return;loading=true;try{const ids=assets.map(a=>a.id).join(',');const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids='+ids+'&price_change_percentage=24h&sparkline=true',{headers:{accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json();if(!Array.isArray(data)||!data.length)throw Error('Nessuna quotazione');const latest=Object.fromEntries(data.map(x=>[x.id,x]));for(const [id,item] of Object.entries(latest)){const live=quotes[id];const cgPrice=Number(item.current_price);item.yeBaseline24h=cgPrice/(1+Number(item.price_change_percentage_24h||0)/100);if(yeMarketConnected&&live?.yeLiveAt&&Date.now()-live.yeLiveAt<15000)item.current_price=live.current_price;if(live?.yeLiveAt){item.yeLiveAt=live.yeLiveAt;item.current_price=live.current_price}quotes[id]=item}lastFetch=Date.now();if(session&&!yeMarketConnected){yeMarketDirty=true;yeMarketRefreshUI()}}catch(e){if(!yeMarketConnected)$('marketStatus').textContent=lastFetch?'Dati di mercato in ritardo':'Mercati non disponibili';if(!Object.keys(quotes).length)toast('Quotazioni non disponibili al momento. Riprova tra poco.')}finally{loading=false}}
+// Feed pubblico Kraken WebSocket v2: i prezzi cambiano solo quando arriva una quotazione reale.
+// CoinGecko resta la fonte di fallback per grafici, capitalizzazione e variazione 24h.
+let yeMarketSocket=null,yeMarketDirty=false,yeMarketConnected=false,yeMarketLastTick=0;
+const yeKrakenSymbols={'BTC/EUR':'bitcoin','ETH/EUR':'ethereum','USDT/EUR':'tether','SOL/EUR':'solana','XRP/EUR':'ripple','BNB/EUR':'binancecoin'};
+function yeStartMarketStream(){
+ if(yeMarketSocket||!session||!('WebSocket' in window))return;
+ try{
+  const ws=new WebSocket('wss://ws.kraken.com/v2');yeMarketSocket=ws;
+  ws.onopen=()=>{yeMarketConnected=true;ws.send(JSON.stringify({method:'subscribe',params:{channel:'ticker',symbol:Object.keys(yeKrakenSymbols),snapshot:true}}))};
+  ws.onmessage=event=>{try{
+   const msg=JSON.parse(event.data);if(msg.channel!=='ticker'||!Array.isArray(msg.data))return;
+   for(const tick of msg.data){const id=yeKrakenSymbols[tick.symbol],v=Number(tick.last);if(!id||!Number.isFinite(v)||v<=0)continue;
+    quotes[id]={...(quotes[id]||{}),id,current_price:v,yeLiveAt:Date.now()};yeMarketLastTick=Date.now();yeMarketDirty=true;
+   }
+  }catch(e){console.warn('Ticker non valido',e)}};
+  ws.onerror=()=>{yeMarketConnected=false};
+  ws.onclose=()=>{yeMarketSocket=null;yeMarketConnected=false};
+ }catch(e){console.warn('Feed prezzi non disponibile',e)}
+}
+function yeStopMarketStream(){if(yeMarketSocket){const ws=yeMarketSocket;yeMarketSocket=null;ws.onclose=null;ws.close()}yeMarketConnected=false}
+function yeMarketRefreshUI(){
+ if(!session)return;
+ if(!yeMarketSocket)yeStartMarketStream();
+ const status=$('marketStatus');
+ if(status){const fresh=yeMarketConnected&&yeMarketLastTick&&Date.now()-yeMarketLastTick<15000;status.textContent=fresh?'Aggiornamento live':yeMarketConnected?'Connessione live · in attesa dati':lastFetch?'Dati di mercato in ritardo':'Connessione ai mercati…';}
+ if(!yeMarketDirty)return;yeMarketDirty=false;
+ const key=location.hash.slice(1).split('?')[0]||'dashboard';
+ if(!['dashboard','markets','wallet'].includes(key))return;
+ // Aggiorna solo i valori dei prezzi: niente ridisegno della pagina, perdita di scroll o focus.
+ const root=$('pageContent');if(!root)return;
+ root.querySelectorAll('[data-ye-price]').forEach(el=>{const a=assets.find(x=>x.id===el.dataset.yePrice);if(a)el.textContent=price(a)});
+ root.querySelectorAll('[data-ye-change]').forEach(el=>{const a=assets.find(x=>x.id===el.dataset.yeChange);if(a)el.innerHTML=change(a)});
+ root.querySelectorAll('[data-ye-total]').forEach(el=>el.textContent=eur(total()));
+ root.querySelectorAll('[data-ye-wallet-value]').forEach(el=>{const a=assets.find(x=>x.symbol===el.dataset.yeWalletValue);if(a&&q(a))el.textContent=eur(balance(a.symbol)*q(a).current_price)});
+ // Ridisegna gli indicatori live del grafico senza rigenerare l'intera pagina.
+ if(key==='dashboard'&&$('mainChart'))$('mainChart')._yeCandle?.paint?.();
+ if(key==='markets'&&$('marketChart'))$('marketChart')._yeCandle?.paint?.();
+}
+setInterval(yeMarketRefreshUI,1000);
+const q=a=>quotes[a.id];const change=a=>{const item=q(a);const v=item?.yeBaseline24h>0?(item.current_price/item.yeBaseline24h-1)*100:item?.price_change_percentage_24h;return v==null?'—':`<span class="${v>=0?'positive':'negative'}">${v>=0?'+':''}${fmt(v)}%</span>`};const coin=a=>`<div class="coin"><div class="coin-icon">${a.icon}</div><div><div class="coin-name">${a.name}</div><div class="coin-sub">${a.symbol}</div></div></div>`;const price=a=>q(a)?.current_price!=null?eur(q(a).current_price):'—';const livePrice=a=>`<span data-ye-price="${a.id}">${price(a)}</span>`;const liveChange=a=>`<span data-ye-change="${a.id}">${change(a)}</span>`;const wallet=a=>wallets.find(w=>w.currency===a);const balance=a=>Number(wallet(a)?.balance||0);const total=()=>wallets.reduce((sum,w)=>sum+(w.currency==='EUR'?Number(w.balance):Number(w.balance)*(assets.find(a=>a.symbol===w.currency)?q(assets.find(a=>a.symbol===w.currency))?.current_price||0:0)),0);
+const heading=(title,sub,right='')=>`<div class="page-heading"><div><h1>${title}</h1><p>${sub}</p></div>${right}</div>`;const card=(label,value,foot='')=>`<div class="card"><div class="card-label">${label}</div><div class="metric">${value}</div><div class="small">${foot}</div></div>`;const empty=`<div class="empty">Nessun movimento da mostrare.<br>Le attività del conto appariranno qui quando disponibili.</div>`;
+function dashboard(){
+ const ticker=assets.slice(0,5).map(a=>`<div class="pl-tick"><span class="pl-tick-icon">${a.icon}</span><b>${a.symbol}</b><span>${livePrice(a)}</span><span>${liveChange(a)}</span></div>`).join('');
+ const kpi=[['◈','Patrimonio complessivo',eur(total()),'Valore stimato EUR'],['▣','Saldo disponibile',eur(balance('EUR')),'Conto EUR'],['◎','Portafogli attivi',wallets.length,'Asset del conto'],['▥','Mercati monitorati',Object.keys(quotes).length,'Quotazioni disponibili']];
+ const cards=kpi.map(([icon,label,value,note])=>`<section class="pl-kpi"><span class="pl-kpi-icon">${icon}</span><div><div class="pl-kpi-label">${label}</div><div class="pl-kpi-value">${value}</div><small>${note}</small></div></section>`).join('');
+ const market=assets.map((a,i)=>`<div class="pl-market-row"><span class="pl-rank">${i+1}</span><span class="pl-coin">${a.icon}</span><div class="pl-asset"><strong>${a.symbol}</strong><small>${a.name}</small></div><span class="pl-market-price">${livePrice(a)}</span><span class="pl-market-change">${liveChange(a)}</span><button type="button" class="pl-market-link" data-trade="${a.id}" aria-label="Apri grafico ${a.name}">↗</button></div>`).join('');
+ return `<div class="pl-dashboard"><div class="pl-ticker"><span class="pl-ticker-label">PLATINUM <i>◆</i></span><div class="pl-ticker-scroll">${ticker}</div><span class="pl-live-indicator"><i></i> LIVE</span></div><div class="pl-intro"><div><span class="pl-eyebrow">YOUNGEXCHANGE / PLATINUM EXPERIENCE</span><h1>Panoramica<span class="pl-head-spark">✦</span></h1><p>Il tuo spazio finanziario, in una nuova dimensione.</p></div><span class="pl-intro-chip">✧ PLATINUM WORKSPACE</span></div><div class="pl-kpi-grid">${cards}</div><div class="pl-main-grid"><section class="pl-panel pl-chart-panel"><div class="pl-chart-heading"><div><span class="pl-eyebrow">ANALISI DEI MERCATI</span><h2><span class="pl-btc">₿</span> Bitcoin / EUR <small>BTC/EUR</small></h2><div class="pl-price-line"><span id="yeChartPriceMain">${livePrice(assets[0])}</span><span>${liveChange(assets[0])}</span></div></div><span class="pl-live-indicator"><i></i> MERCATO</span></div><div class="pl-chart-subhead"><span>GRAFICO A CANDELE</span><span id="yeStatsMain">Dati OHLC disponibili</span></div>${yeChartControls('mainChart')}<div class="ye-chart-workspace"><div class="ye-chart-plot"><canvas class="chart chart-tall" id="mainChart"></canvas></div><aside class="ye-chart-side"><div class="ye-side-title">Panoramica <span>● LIVE</span></div><div id="yeChartSummaryMain" class="ye-summary-rows">Caricamento dati di mercato…</div><p>Dati di mercato, non un sistema di esecuzione.</p></aside></div></section><section class="pl-panel pl-markets-panel"><div class="pl-panel-title"><div><span class="pl-eyebrow">PANORAMICA ASSET</span><h2>Mercati <span class="pl-green">↗</span></h2></div><a href="#markets">Esplora tutti ↗</a></div><div class="pl-market-tabs"><span class="selected">Tutti</span><span>Crypto</span><span>Spot · EUR</span></div><div class="pl-market-list">${market}</div><p class="pl-data-note">Prezzi mostrati quando disponibili dal feed.</p></section></div><div class="pl-bottom-grid"><section class="pl-panel pl-activity-panel"><div class="pl-panel-title"><div><span class="pl-eyebrow">WORKSPACE</span><h2>Attività recenti</h2></div><a href="#activity">Apri attività ↗</a></div><div class="pl-empty"><span>▤</span><div><strong>Le tue operazioni, in un unico posto</strong><p>Consulta lo storico delle richieste e dei movimenti nella sezione Attività.</p></div></div><a class="pl-inline-link" href="#activity">Visualizza attività →</a></section><section class="pl-panel pl-wallet-panel"><div class="pl-panel-title"><div><span class="pl-eyebrow">PORTAFOGLIO</span><h2>I tuoi saldi</h2></div><a href="#wallet">Apri wallet ↗</a></div><div class="pl-wallet-total" data-ye-total>${eur(total())}</div><div class="pl-wallet-list">${['EUR','USDT','BTC','ETH'].map(c=>`<div><span>${c==='EUR'?'€':c==='USDT'?'₮':c==='BTC'?'₿':'Ξ'} &nbsp; ${c}</span><strong>${c==='EUR'?eur(balance(c)):fmt(balance(c),c==='BTC'||c==='ETH'?6:2)+' '+c}</strong></div>`).join('')}</div></section><section class="pl-panel pl-actions-panel"><div class="pl-panel-title"><div><span class="pl-eyebrow">OPERAZIONI</span><h2>Azioni rapide</h2></div><span class="pl-green">✦</span></div><div class="actions">${actions()}</div><div class="pl-security-line">♢ &nbsp; Le operazioni richiedono autorizzazioni e verifiche.</div></section></div></div>`;
+}
+function actions(){return [['↓','Deposita','deposit'],['↑','Preleva','withdraw'],['↔','Trasferisci','transfer'],['⇄','Converti','swap']].map(([i,n,a])=>`<button class="action" data-action="${a}"><strong>${i}</strong><span>${n}</span></button>`).join('')}
+function markets(){return heading('Mercati crypto','Quotazioni live quando disponibili. Variazioni nelle ultime 24 ore; aggiornamenti secondo la disponibilità del mercato.','<button class="secondary-btn" id="refreshMarkets">↻ Aggiorna</button>')+`<div class="grid cols-3">${assets.slice(0,3).map(a=>card(a.name,price(a),change(a))).join('')}</div><section class="card mt"><div class="section-head"><h3>Panoramica dei mercati</h3><span class="small">Quotazioni live · variazione 24 ore · possibili ritardi</span></div><div class="table-wrap"><table><thead><tr><th>Asset</th><th>Prezzo EUR</th><th>24 ore</th><th>Capitalizzazione</th><th></th></tr></thead><tbody>${assets.map(a=>`<tr><td>${coin(a)}</td><td>${livePrice(a)}</td><td>${liveChange(a)}</td><td>${q(a)?.market_cap!=null?eur(q(a).market_cap):'—'}</td><td><button class="table-link" data-trade="${a.id}">Grafico ↗</button></td></tr>`).join('')}</tbody></table></div></section><section class="card mt ye-market-chart"><div class="section-head"><h3 id="yeMarketChartTitle">Grafico di mercato</h3><span class="small">Dati OHLC di mercato · non è un sistema di esecuzione</span></div>${yeChartControls('marketChart')}<div class="ye-chart-workspace"><div class="ye-chart-plot"><canvas id="marketChart" class="chart chart-tall"></canvas></div><aside class="ye-chart-side"><div class="ye-side-title">Panoramica <span>● LIVE</span></div><div id="yeChartSummaryMarket" class="ye-summary-rows">Caricamento dati di mercato…</div><p>Valori OHLC reali; nessun ordine eseguito da questo grafico.</p></aside></div></section>`}
+function walletPage(){return heading('Il tuo portafoglio','Gestisci e consulta i tuoi asset digitali in un ambiente dedicato.','<span class="pill">◈ Wallet interno YoungExchange</span>')+`<div class="grid cols-2"><section class="card"><div class="card-label">Patrimonio totale stimato</div><div class="metric" style="font-size:40px"><span data-ye-total>${eur(total())}</span></div><div class="small">Saldi dal database Supabase · prezzi di mercato esterni</div><div class="actions">${actions()}</div></section><section class="card"><div class="section-head"><h3>Stato del conto</h3></div><div class="asset-row"><span class="muted">Email</span><strong>${esc(session?.user.email||'—')}</strong></div><div class="asset-row"><span class="muted">Portafogli creati</span><strong>${wallets.length}</strong></div><div class="asset-row"><span class="muted">Verifica telefonica</span><strong>${session?.user.phone_confirmed_at?'Verificato':'Non verificato'}</strong></div></section></div><section class="card mt"><div class="section-head"><h3>I tuoi asset</h3><span class="small">Saldi in sola lettura</span></div>${['EUR','BTC','ETH','USDT',...wallets.map(w=>w.currency).filter(c=>!['EUR','BTC','ETH','USDT'].includes(c))].map(c=>{const a=assets.find(x=>x.symbol===c);return `<div class="asset-row">${a?coin(a):`<div class="coin"><div class="coin-icon">€</div><div><div class="coin-name">Euro</div><div class="coin-sub">EUR</div></div></div>`}<div class="align-right"><strong>${fmt(balance(c),c==='EUR'?2:8)} ${c}</strong><div class="small">${c==='EUR'?eur(balance(c)):a&&q(a)?eur(balance(c)*q(a).current_price):'Valore EUR non disponibile'}</div></div></div>`}).join('')}</section>`}
+async function activity(){const {data,error}=await sb.from('operation_requests').select('id,operation_type,currency,amount,status,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);if(error)toast('Impossibile caricare le richieste: '+error.message);const {data:clientRequests,error:clientRequestsError}=await sb.rpc('ye_my_client_requests');if(clientRequestsError)console.warn('Richieste cliente non disponibili:',clientRequestsError.message);const {data:entries}=await sb.from('ledger_entries').select('id,operation_type,amount,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);const {data:internalDeposits,error:internalError}=await sb.rpc('ye_my_internal_deposits');if(internalError)console.warn('Depositi interni non disponibili:',internalError.message);$('pageContent').innerHTML=heading('Attività','Storico delle richieste e dei movimenti registrati.')+`<section class="card"><div class="section-head"><h3>Richieste operative</h3><span class="small">${(data||[]).length} risultati</span></div>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Importo</th><th>Stato</th></tr></thead><tbody>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount)} ${esc(r.currency)}</td><td><span class="tag">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Depositi interni</h3></div>${internalDeposits?.length?`<div class="table-wrap"><table><thead><tr><th>Data registrazione</th><th>Valuta</th><th>Importo</th><th>Riferimento</th><th>Stato</th></tr></thead><tbody>${internalDeposits.map(r=>`<tr><td>${esc(new Date(r.created_at).toLocaleString('it-IT'))}</td><td>${esc(r.currency)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)}</td><td>${esc(r.reference||'—')}</td><td>Registrato sul conto</td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Registro movimenti</h3></div>${entries?.length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th></tr></thead><tbody>${entries.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount,8)}</td></tr>`).join('')}</tbody></table></div>`:empty}</section>`}
+function security(){return heading('Sicurezza','Controlla l’accesso e le verifiche del tuo account.')+`<div class="grid cols-2"><section class="card"><div class="section-head"><h3>Profilo e verifiche</h3></div><div class="asset-row"><span class="muted">Email</span><strong>${esc(session?.user.email||'—')}</strong></div><div class="asset-row"><span class="muted">Email confermata</span><span class="tag">${session?.user.email_confirmed_at?'Sì':'Da verificare'}</span></div><div class="asset-row"><span class="muted">Numero telefonico</span><strong>${session?.user.phone?esc(session.user.phone.replace(/.(?=.{3})/g,'•')):'Non collegato'}</strong></div><div class="asset-row"><span class="muted">Telefono confermato</span><span class="tag">${session?.user.phone_confirmed_at?'Sì':'No'}</span></div></section><section class="card"><div class="section-head"><h3>Proteggi il tuo account</h3></div><p class="muted">Associa e conferma il tuo numero di telefono per proteggere il conto.</p><button class="secondary-btn" data-action="phone">Verifica telefono</button><div class="divider"></div><button class="secondary-btn" data-action="password">Reimposta password via email</button></section></div>`}
+function support(){return heading('Assistenza YoungExchange','Il tuo centro assistenza, integrato nella piattaforma.')+`<div class="ye-support-layout"><section class="card ye-support-chat"><div class="ye-support-head"><h3>Chat con l’assistenza</h3><span class="ye-support-badge">Servizio clienti</span></div><div class="ye-support-conversation"><span class="ye-support-day">Benvenuto</span><div class="ye-support-message"><span class="ye-support-avatar">Y</span><div class="ye-support-bubble"><strong>YoungExchange · Centro assistenza</strong><p>Come possiamo aiutarti? Seleziona un argomento oppure apri la chat con il nostro team.</p></div></div><div class="ye-support-topics"><button data-support-topic="Conto e accesso">◈ Conto e accesso</button><button data-support-topic="Depositi e prelievi">↕ Depositi e prelievi</button><button data-support-topic="Mercati e quotazioni">⌁ Mercati e quotazioni</button><button data-support-topic="Sicurezza">♢ Sicurezza</button></div><div class="ye-support-help"><span class="ye-support-help-icon">✧</span><div><strong>Parla con l'assistenza</strong><p>Apri la conversazione protetta nel servizio di chat collegato a YoungExchange. La disponibilità degli operatori dipende dal servizio.</p></div></div></div><div class="ye-support-compose"><span>La chat si apre con il pulsante qui accanto.</span><button id="yeOpenSupport" class="primary">Apri chat ↗</button></div></section><section class="card ye-support-info"><h3>Come possiamo aiutarti?</h3><p class="muted">Trova le risposte ai dubbi più frequenti oppure contatta il supporto.</p><div class="ye-support-tools"><button data-support-topic="Assistenza chat">◌<strong>Chat</strong><small>Scrivi al team</small></button><button data-support-topic="Guide e istruzioni">▤<strong>Guide</strong><small>Informazioni utili</small></button><button data-support-topic="Domande frequenti">?<strong>FAQ</strong><small>Risposte rapide</small></button></div><h3 class="ye-support-subtitle">Argomenti più richiesti</h3><div class="ye-support-faq"><details><summary>Come effettuare un deposito?</summary><p>Apri Portafoglio e seleziona Deposita. Segui le istruzioni visualizzate e verifica lo stato della richiesta nella sezione Attività.</p></details><details><summary>Come verifico una richiesta?</summary><p>Puoi consultare lo stato delle richieste nella sezione Attività. L'approvazione non equivale necessariamente all'esecuzione di un trasferimento esterno.</p></details><details><summary>Come proteggere il mio conto?</summary><p>Non condividere password, codici OTP, token o chiavi private. Verifica sempre il dominio del sito.</p></details><details><summary>Come richiedere un prelievo?</summary><p>Apri Portafoglio e seleziona Preleva. La disponibilità e l'esecuzione effettiva dipendono dai servizi abilitati.</p></details></div><div class="ye-support-contact"><strong>Serve ancora aiuto?</strong><p>Il team di assistenza può rispondere attraverso il servizio collegato.</p><button id="yeOpenSupportSecondary" class="primary">Contatta il supporto ↗</button></div></section></div>`}
+function yeOpenSupport(topic=''){const id=cfg.crispWebsiteId;if(!id){toast('Chat non configurata: verifica il Website ID del servizio di assistenza.');return;}if(!window.$crisp){window.$crisp=[];window.CRISP_WEBSITE_ID=id;const script=document.createElement('script');script.src='https://client.crisp.chat/l.js';script.async=true;script.onerror=()=>toast('Servizio chat non raggiungibile. Riprova più tardi.');document.head.appendChild(script);}if(topic)window.$crisp.push(['set','session:data',[["argomento",topic]]]);window.$crisp.push(['do','chat:open']);}
+
+function adminPage(){
+ const sections=[['users','Utenti e conti','Gestione utenti, anagrafiche e wallet','users'],['deposits','Depositi','Richieste, verifiche e accrediti interni','download'],['withdrawals','Prelievi','Richieste e autorizzazioni','upload'],['transactions','Transazioni','Movimenti e trasferimenti interni','arrow-left-right'],['balances','Saldi','Controllo dei wallet e rettifiche','wallet'],['crypto','Crypto e cambi','Quotazioni e richieste di conversione','refresh-cw'],['history','Storico e controlli','Tracciamento e verifiche','history'],['settings','Impostazioni sito','Configurazione e sicurezza','settings']];
+ return heading('Amministrazione','Centro di controllo · YoungExchange Platinum')+
+ '<div class="ye-plat-admin-head"><div><span class="ye-plat-kicker">YOUNGEXCHANGE / PLATINUM CONTROL CENTER</span><h2>Workspace amministrativo</h2><p>Conti, richieste e controlli in un unico ambiente protetto.</p></div><span class="ye-plat-admin-chip">◆ PLATINUM</span></div>'+
+ '<div class="ye-plat-admin-grid">'+sections.map(([id,label,description])=>'<button type="button" class="ye-plat-admin-tile '+(activeAdminSection===id?'active':'')+'" data-admin-section="'+id+'"><span class="ye-plat-admin-tile-icon">'+({users:'♙',deposits:'↓',withdrawals:'↑',transactions:'↔',balances:'◈',crypto:'⇄',history:'▤',settings:'⚙'}[id])+'</span><span><strong>'+esc(label)+'</strong><small>'+esc(description)+'</small></span><span class="ye-plat-admin-chevron">↗</span></button>').join('')+'</div>'+
+ '<div id="adminWorkspace" class="ye-plat-workspace mt"><section class="card"><h3>Caricamento dati amministrativi…</h3></section></div>';
+}
+// PLATINUM: helper amministrativi centralizzati. Ogni RPC applica le autorizzazioni nel database.
+const adminDate=value=>{if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?'—':date.toLocaleString('it-IT',{dateStyle:'short',timeStyle:'short'})};
+const adminOperationLabels={deposit:'Deposito',withdrawal:'Prelievo',transfer:'Trasferimento',swap:'Conversione',buy:'Acquisto',sell:'Vendita',internal_deposit:'Accredito interno',manual_credit:'Rettifica positiva',manual_debit:'Rettifica negativa'};
+const adminStatusLabels={pending:'In attesa',approved:'Approvata',rejected:'Rifiutata',completed:'Completata',posted:'Contabilizzata',failed:'Non riuscita',cancelled:'Annullata'};
+const adminErr=error=>{console.error('[YoungExchange Platinum] Errore amministrazione:',error);toast('Amministrazione: '+(error?.message||String(error)))};
+async function adminRpc(name,args={}){
+ if(!sb||!session||!isAdmin)throw Error('Sessione amministratore non autorizzata.');
+ const {data,error}=await sb.rpc(name,args);
+ if(error)throw Error(name+': '+error.message);
+ if(data==null)return [];
+ return Array.isArray(data)?data:[data];
+}
+const adminSections=['users','deposits','withdrawals','transactions','balances','crypto','history','settings'];
+let activeAdminSection='users';
+function adminTable(rows,columns){return '<div class="table-wrap"><table><thead><tr>'+columns.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr>'+columns.map(c=>'<td>'+c[1](r)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+columns.length+'">Nessun dato disponibile.</td></tr>')+'</tbody></table></div>'}
+function adminTools(rows,kind){
+ const id='adm-'+kind;
+ return '<div class="mt"><label for="'+id+'-search">Cerca in '+esc(kind)+'</label><input id="'+id+'-search" data-admin-search="'+esc(kind)+'" placeholder="Cerca per utente, valuta, stato o identificativo" autocomplete="off"><button type="button" class="secondary-btn" data-admin-export="'+esc(kind)+'">Esporta CSV</button></div>';
+}
+function adminFilter(rows,query){const q=String(query||'').trim().toLocaleLowerCase();return q?rows.filter(row=>Object.values(row).some(v=>String(v??'').toLocaleLowerCase().includes(q))):rows}
+function adminExport(rows,kind){
+ const keys=[...new Set(rows.flatMap(row=>Object.keys(row)))];
+ const cell=v=>'"'+String(v??'').replace(/"/g,'""').replace(/^[=+@-]/,'\t$&')+'"';
+ const csv='\ufeff'+keys.map(cell).join(',')+'\r\n'+rows.map(row=>keys.map(k=>cell(row[k])).join(',')).join('\r\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download='youngexchange-'+kind+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function adminBindTools(workspace,rows,kind,columns){
+ const input=workspace.querySelector('[data-admin-search="'+kind+'"]');
+ const target=workspace.querySelector('[data-admin-results="'+kind+'"]');
+ const exportButton=workspace.querySelector('[data-admin-export="'+kind+'"]');
+ if(input&&target)input.oninput=()=>target.innerHTML=adminTable(adminFilter(rows,input.value),columns);
+ if(exportButton)exportButton.onclick=()=>adminExport(adminFilter(rows,input?.value),kind);
+}
+const adminCell=v=>esc(v??'—');
+const adminAmount=r=>fmt(r.amount,r.currency==='EUR'?2:8)+' '+esc(r.currency||'');
+const adminOperationColumns=[['Data',r=>adminCell(adminDate(r.operation_date||r.created_at))],['Utente',r=>adminCell(r.email||r.user_id)],['Tipo',r=>adminCell(adminOperationLabels[r.operation_type]||r.operation_type)],['Importo',adminAmount],['Stato',r=>'<span class="tag">'+adminCell(adminStatusLabels[r.status]||r.status)+'</span>']];
+// Richieste clienti: elenco protetto e revisione lato database; nessun movimento esterno automatico.
+let yeQueueBusy=false,yeQueueLast=0;
+async function yeRefreshQueue(section){
+ if(!isAdmin||!session||yeQueueBusy)return;
+ const host=$('yeClientQueue');if(!host||!host.isConnected)return;
+ yeQueueBusy=true;
+ try{
+  const {data,error}=await sb.rpc('ye_admin_client_requests');if(error)throw error;
+  const relevant=(data||[]).filter(r=>section==='deposits'?r.kind==='deposit':section==='withdrawals'?r.kind==='withdraw':section==='crypto'?['swap','buy','sell'].includes(r.kind):true);
+  const pending=relevant.filter(r=>r.status==='pending').length;
+  host.innerHTML='<div class="section-head"><h3>Richieste clienti · '+pending+' in attesa</h3><button type="button" class="secondary-btn" id="yeQueueReload">Aggiorna</button></div><p class="small">Aggiornamento automatico ogni 15 secondi. I prezzi sono indicativi, non eseguibili: approvare significa autorizzare la richiesta, non trasferire fondi né effettuare uno swap.</p>'+
+   adminTable(relevant,[['Data',r=>adminCell(adminDate(r.created_at))],['Cliente',r=>adminCell(r.email||r.user_id)],['Tipo',r=>adminCell(({deposit:'Deposito',withdraw:'Prelievo',swap:'Conversione',buy:'Acquisto',sell:'Vendita'})[r.kind]||r.kind)],['Importo',r=>adminCell(fmt(r.amount,r.currency==='EUR'?2:8)+' '+r.currency)],['Destinazione',r=>adminCell(r.target||r.destination||'—')],['Stato',r=>adminCell(r.status)],['Quotazione EUR',r=>yeQuoteCell(r)],['Decisione',r=>r.status==='pending'?'<button type="button" class="secondary-btn" data-ye-decision="approved" data-ye-id="'+esc(r.id)+'">Approva</button> <button type="button" class="secondary-btn" data-ye-decision="rejected" data-ye-id="'+esc(r.id)+'">Rifiuta</button>':'—']]);
+  host.querySelector('#yeQueueReload').onclick=()=>yeRefreshQueue(section);
+  host.querySelectorAll('[data-ye-decision]').forEach(b=>b.onclick=async()=>{
+   const decision=b.dataset.yeDecision,id=b.dataset.yeId;
+   const r=relevant.find(x=>x.id===id);if(!r)return;
+   if(!confirm((decision==='approved'?'Autorizzare':'Rifiutare')+' la richiesta '+r.kind+' di '+r.amount+' '+r.currency+'? Nessun pagamento o cambio sarà eseguito automaticamente.'))return;
+   b.disabled=true;
+   try{const {error}=await sb.rpc('ye_admin_review_client_request',{p_request_id:id,p_decision:decision});if(error)throw error;toast('Decisione registrata. Nessuna esecuzione esterna.');setTimeout(()=>yeRefreshQueue(section),100)}catch(e){toast('Revisione non riuscita: '+e.message)}finally{b.disabled=false}
+  });
+ }catch(e){host.innerHTML='<p class="small">Coda richieste non disponibile: '+esc(e.message)+'. Installa prima il file SQL YE_RICHIESTE_ADMIN.sql.</p>'}finally{yeQueueBusy=false}
+}
+function yeQuoteCell(r){
+ if(!['swap','buy','sell'].includes(r.kind))return '—';
+ const source=r.currency==='EUR'?1:q(assets.find(a=>a.symbol===r.currency)||{})?.current_price;
+ const target=r.target==='EUR'?1:q(assets.find(a=>a.symbol===r.target)||{})?.current_price;
+ if(!source||!target||!lastFetch||Date.now()-lastFetch>120000)return '<span class="small">Quotazione non disponibile o scaduta</span>';
+ const rate=source/target;
+ return '<span class="small">1 '+esc(r.currency)+' ≈ '+fmt(rate,8)+' '+esc(r.target)+'<br>Stima: '+fmt(Number(r.amount)*rate,8)+' '+esc(r.target)+'<br>CoinGecko · '+esc(new Date(lastFetch).toLocaleTimeString('it-IT'))+' · indicativa</span>';
+}
+async function yeAttachQueue(section){
+ if(!['deposits','withdrawals','crypto','transactions'].includes(section))return;
+ const w=$('adminWorkspace');if(!w||activeAdminSection!==section)return;
+ const box=document.createElement('section');box.className='card mt';box.id='yeClientQueue';box.innerHTML='<h3>Caricamento richieste clienti…</h3>';w.append(box);
+ await yeRefreshQueue(section);
+}
+setInterval(()=>{if(isAdmin&&session&&$('yeClientQueue')?.isConnected)yeRefreshQueue(activeAdminSection)},15000);
+async function adminSelectSection(section){
+ const workspace=$('adminWorkspace');if(!workspace||!isAdmin||!adminSections.includes(section))return;
+ activeAdminSection=section;document.querySelectorAll('[data-admin-section]').forEach(b=>b.classList.toggle('active',b.dataset.adminSection===section));workspace.innerHTML='<section class="card"><h3>Caricamento '+esc(section)+'…</h3></section>';
+ const view=(title,body)=>{if(activeAdminSection===section&&workspace.isConnected)workspace.innerHTML='<section class="card"><h3>'+esc(title)+'</h3>'+body+'</section>'};
+ try{
+ if(section==='users'){
+  const users=await adminRpc('admin_list_users');
+  view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Crea un account cliente NON verificato, senza invito. Il cliente richiede personalmente il codice email OTP dalla pagina Accesso OTP. Il telefono resta non verificato.</p><form id="adminInviteForm"><label>Nome e cognome</label><input name="name" maxlength="120" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account non verificato</button></form></div><div class="divider"></div>`+'<p class="small">Utenti registrati: '+users.length+'</p>'+adminTools(users,'utenti')+'<div data-admin-results="utenti">'+adminTable(users,[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'</div><label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
+  adminBindTools(workspace,users,'utenti',[['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]]);const inviteForm=workspace.querySelector('#adminInviteForm');if(inviteForm)inviteForm.onsubmit=adminInviteUser;
+  const sel=workspace.querySelector('#adminUser');if(sel){sel.onchange=e=>{adminSelectedUser=e.target.value||null;loadAdminUser()};if(adminSelectedUser)loadAdminUser()}
+  return;
+ }
+ if(section==='deposits'||section==='balances'){
+  const users=await adminRpc('admin_list_users');
+  const options=users.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.email||u.display_name||u.user_id)+'</option>').join('');
+  const form=`<div class="divider"></div><h3>Nuova operazione amministrativa</h3><p class="small">Puoi creare richieste di deposito oppure registrare accrediti e addebiti contabili interni. Gli accrediti interni modificano il saldo e sono tracciati, ma non certificano un pagamento esterno.</p><form id="yeEntryForm"><label>Utente</label><select name="user" required><option value="">Seleziona utente</option>${options}</select><label>Operazione</label><select name="kind" required><option value="deposit_request">Richiesta deposito (senza accredito)</option><option value="internal_deposit">Deposito interno sul conto (registra entrata e aggiorna saldo)</option><option value="manual_credit">Rettifica positiva saldo interno</option><option value="manual_debit">Addebito interno sul conto (aggiorna saldo)</option></select><label>Valuta</label><select name="currency"><option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option></select><label>Importo</label><input name="amount" type="number" min="0.0000000001" step="any" required><label>Provenienza dichiarata (non verificata)</label><input name="source" maxlength="200" placeholder="Es. pratica interna, bonifico dichiarato, wallet dichiarato"><label>Data e ora dichiarate (solo riferimento, non data contabile)</label><input name="reported_at" type="datetime-local"><label>Riferimento esterno / pratica</label><input name="reference" maxlength="160" placeholder="Identificativo pratica o documento"><label>Motivazione e giustificativo</label><textarea name="reason" minlength="8" maxlength="500" required placeholder="Motivazione verificabile dell’operazione"></textarea><button class="primary" type="submit">Registra operazione</button></form><div class="divider"></div><h3>Registro delle operazioni amministrative</h3><div id="yeEntries">Caricamento registro…</div>`;
+  let existing='';
+  if(section==='balances')existing='<p class="small">I saldi aggiornati sono visibili nella sezione Utenti e conti.</p>';
+  else {const ops=await adminRpc('admin_list_all_operations',{p_status:null});const rows=ops.filter(r=>r.operation_type==='deposit');existing=adminTable(rows,adminOperationColumns)}
+  view(section==='deposits'?'Depositi':'Saldi',existing+form);
+  const f=workspace.querySelector('#yeEntryForm');f.onsubmit=adminPostEntry;
+  if(section==='deposits')yeAttachQueue(section);
+  const target=workspace.querySelector('#yeEntries');
+  try {const rows=await adminRpc('ye_admin_list_entries');target.innerHTML=adminTable(rows,[['Data',r=>adminCell(adminDate(r.created_at))],['Utente',r=>adminCell(r.user_id)],['Tipo',r=>adminCell(r.kind)],['Importo',r=>adminAmount(r)],['Stato',r=>adminCell(r.status)],['Provenienza dichiarata',r=>adminCell(r.reported_source)],['Data dichiarata',r=>adminCell(r.reported_at?adminDate(r.reported_at):'—')],['Motivazione',r=>adminCell(r.reason)]]);}catch(err){target.textContent='Registro non installato: esegui prima supabase/ADMIN_OPERATIONS.sql. '+(err.message||'')}
+  return;
+ }
+ if(section==='settings'){
+  view('Impostazioni sito','<p class="small">Configurazione operativa in sola lettura. Le chiavi e le credenziali non devono essere esposte nel browser.</p><p>Dominio: '+esc(location.hostname)+'</p><p>Autenticazione: Supabase Auth</p><p>Invio email: verificare Resend nelle impostazioni SMTP di Supabase.</p><p>Le modifiche sensibili devono essere eseguite dal pannello del servizio, non dal codice pubblico.</p>');return;
+ }
+ if(section==='crypto'){
+  const rows=assets.map(a=>({name:a.name,symbol:a.symbol,price:q(a)?.current_price,change:q(a)?.price_change_percentage_24h}));
+  view('Crypto e cambi','<p class="small">Quotazioni indicative CoinGecko. Nessuna conversione o ordine viene eseguito da questa pagina.</p>'+adminTable(rows,[['Asset',a=>adminCell(a.name)+' ('+adminCell(a.symbol)+')'],['Prezzo EUR',a=>a.price==null?'—':eur(a.price)],['Variazione 24h',a=>a.change==null?'—':fmt(a.change)+'%']]));yeAttachQueue(section);return;
+ }
+ const [users,operations]=await Promise.all([adminRpc('admin_list_users'),adminRpc('admin_list_all_operations',{p_status:null})]);
+ const names=new Map(users.map(u=>[u.user_id,u.email||u.display_name||u.user_id]));
+ const enriched=operations.map(r=>({...r,email:names.get(r.user_id)||r.user_id}));
+ if(section==='deposits'){
+  const rows=enriched.filter(r=>r.operation_type==='deposit');view('Depositi','<p class="small">Richieste di deposito registrate. Nessun accredito è confermato senza riconciliazione effettiva.</p>'+adminTools(rows,'depositi')+'<div data-admin-results="depositi">'+adminTable(rows,adminOperationColumns)+'</div>');adminBindTools(workspace,rows,'depositi',adminOperationColumns);return;
+ }
+ if(section==='withdrawals'){
+  const rows=enriched.filter(r=>r.operation_type==='withdrawal');
+  const pendingCount=rows.filter(r=>r.status==='pending').length;
+  const approvedCount=rows.filter(r=>r.status==='approved').length;
+  const cols=[...adminOperationColumns,['Azioni',r=>r.status==='pending'?'<button class="secondary-btn" data-review="approve" data-request="'+esc(r.id)+'">Approva richiesta</button> <button class="secondary-btn" data-review="reject" data-request="'+esc(r.id)+'">Rifiuta</button>':'—']];
+  view('Prelievi','<p class="small"><strong>Richieste in attesa: '+pendingCount+' · Approvate: '+approvedCount+'</strong></p><p class="small">L’amministratore può approvare o rifiutare una richiesta. Approvato significa autorizzato, non pagamento eseguito: il cliente vede lo stato effettivo.</p>'+adminTable(rows,cols)+`<div class="divider"></div><h3>Crea richiesta di prelievo</h3><p class="small">La richiesta prenota il saldo, ma non invia fondi esterni.</p><form id="adminCreateForm"><label for="adminCreateUser">Utente</label><select id="adminCreateUser" required><option value="">— Seleziona —</option>${users.map(u=>`<option value="${esc(u.user_id)}">${esc(u.email||u.user_id)}</option>`).join('')}</select><label for="adminCurrency">Valuta</label><select id="adminCurrency"><option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option></select><label for="adminAmount">Importo</label><input id="adminAmount" type="number" min="0.000000000001" step="any" required><label for="adminDestinationType">Destinazione</label><select id="adminDestinationType"><option value="bank">IBAN bancario</option><option value="crypto">Indirizzo crypto</option></select><label for="adminDestinationAddress">IBAN / indirizzo</label><input id="adminDestinationAddress" maxlength="256" required><label for="adminDestinationNetwork">Rete crypto (se applicabile)</label><input id="adminDestinationNetwork" maxlength="80"><label for="adminDestinationName">Destinatario</label><input id="adminDestinationName" maxlength="120"><label for="adminOperationDate">Data e ora</label><input id="adminOperationDate" type="datetime-local" required><label for="adminNotes">Note</label><textarea id="adminNotes" maxlength="2000"></textarea><div class="mt"><button class="primary" type="submit">Crea richiesta</button></div></form>`);
+  workspace.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>adminReview(b.dataset.request,b.dataset.review));workspace.querySelector('#adminCreateForm').addEventListener('submit',adminCreate);workspace.querySelector('#adminOperationDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);yeAttachQueue(section);return;
+ }
+ if(section==='transactions'){
+  const accountUsers=users.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.email||u.user_id)+'</option>').join('');
+  const transferForm=`<h3>Trasferimento interno tra conti esistenti</h3><p class="small">Trasferisce solo saldi interni, senza simulare un pagamento esterno. Entrambi i conti devono avere wallet nella stessa valuta. Operazione definitiva, registrata con audit.</p><form id="yeInternalTransfer"><label>Conto di origine</label><select name="from" required><option value="">Seleziona</option>${accountUsers}</select><label>Conto destinatario</label><select name="to" required><option value="">Seleziona</option>${accountUsers}</select><label>Asset</label><select name="currency"><option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option></select><label>Importo</label><input name="amount" type="number" min="0.0000000001" step="any" required><label>Motivazione</label><textarea name="reason" minlength="8" maxlength="500" required></textarea><button class="primary" type="submit">Esegui trasferimento interno</button></form><div class="divider"></div>`;
+  let internalRows=[];try{internalRows=await adminRpc('ye_admin_list_transfers')}catch(e){}
+  view('Transazioni',transferForm+'<h3>Trasferimenti interni contabilizzati</h3>'+adminTable(internalRows,[['Data registrazione',r=>adminCell(adminDate(r.created_at))],['Da',r=>adminCell(r.from_user_id)],['A',r=>adminCell(r.to_user_id)],['Asset',r=>adminCell(r.currency)],['Importo',r=>adminAmount(r)],['Motivo',r=>adminCell(r.reason)]])+'<div class="divider"></div><h3>Richieste operative</h3><p class="small">I movimenti contabilizzati non sono modificabili: eventuali correzioni richiedono un nuovo movimento tracciato.</p><label for="adminStatus">Filtra per stato</label><select id="adminStatus"><option value="">Tutte</option>'+Object.entries(adminStatusLabels).map(([v,l])=>'<option value="'+v+'">'+esc(l)+'</option>').join('')+'</select><div id="adminTransactionTable" class="mt">'+adminTable(enriched,adminOperationColumns)+'</div>');
+  workspace.querySelector('#yeInternalTransfer').onsubmit=adminInternalTransfer;
+  workspace.querySelector('#adminStatus').onchange=e=>{const filtered=e.target.value?enriched.filter(r=>r.status===e.target.value):enriched;workspace.querySelector('#adminTransactionTable').innerHTML=adminTable(filtered,adminOperationColumns)};yeAttachQueue(section);return;
+ }
+ if(section==='transactions_disabled'){
+  view('Transazioni','<p class="small">Elenco delle richieste operative registrate nel database.</p><label for="adminStatus">Filtra per stato</label><select id="adminStatus"><option value="">Tutte</option>'+Object.entries(adminStatusLabels).map(([v,l])=>'<option value="'+v+'">'+esc(l)+'</option>').join('')+'</select><div id="adminTransactionTable" class="mt">'+adminTable(enriched,adminOperationColumns)+'</div>');workspace.querySelector('#adminStatus').onchange=e=>{const filtered=e.target.value?enriched.filter(r=>r.status===e.target.value):enriched;workspace.querySelector('#adminTransactionTable').innerHTML=adminTable(filtered,adminOperationColumns)};return;
+ }
+ if(section==='history'){
+  view('Storico e controlli','<p class="small">Cronologia delle richieste. Non sostituisce un registro di audit immutabile o le prove di pagamento.</p>'+adminTools(enriched,'storico')+'<div data-admin-results="storico">'+adminTable(enriched,adminOperationColumns)+'</div>');adminBindTools(workspace,enriched,'storico',adminOperationColumns);return;
+ }
+ }catch(e){adminErr(e);view('Errore caricamento','<p class="small">'+esc(e.message||String(e))+'</p><button type="button" class="secondary-btn" data-admin-retry="'+esc(section)+'">Riprova</button>')}
+}
+document.addEventListener('click',event=>{const button=event.target.closest('[data-admin-section]');if(button)adminSelectSection(button.dataset.adminSection);const retry=event.target.closest('[data-admin-retry]');if(retry)adminSelectSection(retry.dataset.adminRetry)});
+async function loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const workspace=$('adminWorkspace');if(workspace)await adminSelectSection(activeAdminSection)}
+async function loadAdminUser(){const target=$('adminUserDetail');if(!target)return;const id=adminSelectedUser;if(!id){target.textContent='Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.';return}target.textContent='Caricamento…';try{const [walletList,ops]=await Promise.all([adminRpc('admin_list_wallets',{p_user_id:id}),adminRpc('admin_list_operations',{p_user_id:id})]);if(adminSelectedUser!==id||!target.isConnected)return;target.innerHTML=`<h3>Wallet</h3><div class="table-wrap"><table><thead><tr><th>Valuta</th><th>Saldo</th><th>Impegnato</th><th>Disponibile</th></tr></thead><tbody>${walletList.map(w=>`<tr><td>${esc(w.currency)}</td><td>${fmt(w.total_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.reserved_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.available_balance,w.currency==='EUR'?2:8)}</td></tr>`).join('')||'<tr><td colspan="4">Nessun wallet.</td></tr>'}</tbody></table></div><h3 class="mt">Ultime operazioni (${ops.length})</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Destinazione</th></tr></thead><tbody>${ops.slice(0,30).map(r=>`<tr><td>${esc(adminDate(r.operation_date||r.created_at))}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td>${esc(adminStatusLabels[r.status]||r.status)}</td><td>${esc(r.destination_address||r.destination_iban||'—')}</td></tr>`).join('')||'<tr><td colspan="5">Nessuna operazione.</td></tr>'}</tbody></table></div>`}catch(e){adminErr(e);target.textContent='Errore nel caricamento dei dettagli.'}}
+async function adminPostEntry(event){
+ event.preventDefault();if(!isAdmin||!session)return;
+ const f=event.currentTarget,button=f.querySelector('button[type="submit"]');
+ const v=n=>f.elements[n].value.trim();const amount=Number(v('amount'));
+ if(!Number.isFinite(amount)||amount<=0||amount>1e9){toast('Importo non valido');return}
+ const kind=v('kind');
+ if(kind!=='deposit_request'&&!confirm('Questa rettifica modificherà immediatamente il saldo interno. Hai verificato la documentazione e le autorizzazioni?'))return;
+ if(kind==='deposit_request'&&!v('reference')){toast('Inserisci il riferimento della richiesta');return}
+ button.disabled=true;
+ try{await adminRpc('ye_admin_create_entry',{p_user_id:v('user'),p_currency:v('currency'),p_amount:amount,p_kind:kind,p_reason:v('reason'),p_reference:v('reference')||null,p_idempotency_key:crypto.randomUUID(),p_source:v('source')||null,p_reported_at:v('reported_at')?new Date(v('reported_at')).toISOString():null});toast(kind==='deposit_request'?'Richiesta registrata in attesa; saldo invariato.':kind==='internal_deposit'?'Deposito interno registrato nello storico e saldo aggiornato.':'Movimento contabile interno registrato e saldo aggiornato.');await loadPrivate();await adminSelectSection(activeAdminSection)}catch(err){adminErr(err)}finally{button.disabled=false}
+}
+async function adminInternalTransfer(event){
+ event.preventDefault();if(!isAdmin||!session)return;
+ const f=event.currentTarget,v=n=>f.elements[n].value.trim(),amount=Number(v('amount'));
+ if(v('from')===v('to')){toast('Origine e destinatario devono essere diversi');return}
+ if(!Number.isFinite(amount)||amount<=0){toast('Importo non valido');return}
+ if(!confirm('Confermi il trasferimento definitivo di saldo INTERNO tra i due conti? Non corrisponde a un pagamento esterno.'))return;
+ const button=f.querySelector('button[type=submit]');button.disabled=true;
+ try{await adminRpc('ye_admin_internal_transfer',{p_from:v('from'),p_to:v('to'),p_currency:v('currency'),p_amount:amount,p_reason:v('reason'),p_idempotency_key:crypto.randomUUID()});toast('Trasferimento interno registrato');await loadPrivate();await adminSelectSection('transactions')}catch(e){adminErr(e)}finally{button.disabled=false}
+}
+async function adminInviteUser(event){
+ event.preventDefault();if(!isAdmin||!sb)return;
+ const form=event.currentTarget,button=form.querySelector('button[type="submit"]');
+ const email=form.elements.email.value.trim().toLowerCase(),name=form.elements.name.value.trim(),phone=form.elements.phone.value.trim();
+ if(!email||!name||phone&&!/^\+[1-9]\d{7,14}$/.test(phone)){toast('Controlla nome, email e telefono internazionale.');return}
+ button.disabled=true;
+ try{
+  const {data:auth,error:sessionError}=await sb.auth.getSession();if(sessionError||!auth?.session?.access_token)throw new Error('Sessione scaduta: accedi di nuovo.');
+  const {data,error}=await sb.functions.invoke('admin-invite-user',{body:{email,name,phone:phone||null},headers:{Authorization:'Bearer '+auth.session.access_token}});
+  if(error)throw error;if(!data?.ok)throw new Error(data?.error||'Creazione non confermata');
+  toast('Account creato, email non verificata. Il cliente deve usare Accesso OTP.');await adminSelectSection('users');
+ }catch(err){adminErr(err)}finally{button.disabled=false}
+}
+async function adminReview(id,decision){if(!isAdmin)return;const verb=decision==='approve'?'approvare':'rifiutare';if(!confirm(`Vuoi ${verb} questa richiesta? L'approvazione non invia fondi all'esterno.`))return;try{const result=await adminRpc('review_youngexchange_withdrawal',{p_request_id:id,p_decision:decision});toast('Richiesta aggiornata: '+result);await loadAdmin()}catch(e){adminErr(e)}}
+async function adminCreate(e){e.preventDefault();if(!isAdmin)return;const form=e.currentTarget,button=form.querySelector('button[type=submit]');const val=id=>form.querySelector('#'+id).value.trim();const amount=Number(val('adminAmount'));const currency=val('adminCurrency'),type=val('adminDestinationType');if(!Number.isFinite(amount)||amount<=0){toast('Importo non valido');return}if(type==='bank'&&currency!=='EUR'){toast('Per IBAN seleziona EUR');return}if(type==='crypto'&&currency==='EUR'){toast('Per indirizzi crypto seleziona BTC, ETH o USDT');return}if(!confirm('Creare una richiesta in attesa e prenotare il saldo dell’utente? Non sarà inviato alcun pagamento esterno.'))return;button.disabled=true;try{await adminRpc('admin_create_withdrawal',{p_user_id:val('adminCreateUser'),p_currency:currency,p_amount:amount,p_destination_type:type,p_destination_address:val('adminDestinationAddress'),p_destination_network:val('adminDestinationNetwork')||null,p_destination_name:val('adminDestinationName')||null,p_operation_date:new Date(val('adminOperationDate')).toISOString(),p_idempotency_key:crypto.randomUUID(),p_admin_notes:val('adminNotes')||null});toast('Richiesta creata e saldo prenotato. Nessun invio esterno effettuato.');await loadPrivate();await loadAdmin()}catch(err){adminErr(err)}finally{button.disabled=false}}
+const pages={dashboard:['Panoramica',dashboard],markets:['Mercati',markets],wallet:['Portafoglio',walletPage],activity:['Attività',()=>heading('Attività','Caricamento delle operazioni…')],security:['Sicurezza',security],support:['Assistenza',support],admin:['Amministrazione',adminPage]};
+function route(){if(!session)return;const page=location.hash.slice(1).split('?')[0];const key=pages[page]&&(page!=='admin'||isAdmin)?page:'dashboard';$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='activity')activity();if(key==='admin')loadAdmin();if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);
+function bindPage(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));document.querySelectorAll('[data-trade]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.trade;if(location.hash!=='#markets')location.hash='markets';else route()}));$('refreshMarkets')?.addEventListener('click',()=>fetchQuotes(true));$('yeOpenSupport')?.addEventListener('click',()=>yeOpenSupport());$('yeOpenSupportSecondary')?.addEventListener('click',()=>yeOpenSupport());document.querySelectorAll('[data-support-topic]').forEach(b=>b.addEventListener('click',()=>yeOpenSupport(b.dataset.supportTopic)));$('tradeAsset')?.addEventListener('change',e=>{selected=e.target.value;route()})}
+function action(type){
+ if(type==='password'){passwordReset();return}
+ if(type==='phone'){phoneVerification();return}
+ if(['deposit','withdraw','transfer','swap','buy','sell'].includes(type)){openOperation(type);return}
+}
+function openOperation(type){
+ const title={deposit:'Deposito EUR',withdraw:'Prelievo',transfer:'Trasferimento interno',swap:'Conversione',buy:'Acquisto asset',sell:'Vendita asset'}[type];
+ const overlay=document.createElement('div');overlay.className='modal-overlay';
+ const currencies='<option>EUR</option><option>BTC</option><option>ETH</option><option>USDT</option>';
+ const field=(label,html)=>'<label>'+label+html+'</label>';
+ const currency=field('Valuta','<select name="currency">'+currencies+'</select>');
+ const amount=field('Importo','<input name="amount" type="number" min="0.00000001" step="any" required placeholder="0,00">');
+ const common=field('Riferimento / causale','<input name="reference" maxlength="150" placeholder="Riferimento operazione">');
+ const destination=type==='transfer'?field('ID destinatario YoungExchange','<input name="recipient" required placeholder="UUID del conto destinatario">'):type==='withdraw'?field('Destinazione del prelievo','<input name="destination" required placeholder="IBAN o indirizzo destinazione">'):'';
+ const swap=type==='swap'||type==='buy'||type==='sell'?field('Asset desiderato','<select name="target">'+currencies+'</select>'):'';
+ const disclaimer=type==='deposit'?'La richiesta sarà salvata sul tuo conto. Le coordinate di pagamento devono essere assegnate dall’amministrazione.':type==='transfer'?'Il trasferimento tra conti YoungExchange viene registrato solo dopo la conferma del server.':type==='withdraw'?'Il prelievo viene inviato all’amministrazione per approvazione; l’approvazione non equivale all’invio esterno.':'Inserisci i dati per una richiesta di operazione. Il prezzo indicativo non costituisce un’esecuzione.';
+ overlay.innerHTML='<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / OPERAZIONI</div><h3>'+esc(title)+'</h3><p>'+esc(disclaimer)+'</p><form id="yeOperationForm">'+currency+amount+destination+swap+common+'<div class="notice" id="yeOperationStatus" role="status">I dati saranno verificati prima della registrazione.</div><button class="primary full mt" type="submit">'+(type==='transfer'?'Conferma trasferimento interno':'Invia richiesta')+'</button></form></div>';
+ document.body.append(overlay);overlay.querySelector('.modal-close').onclick=()=>overlay.remove();overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+ const form=overlay.querySelector('form');form.onsubmit=async e=>{e.preventDefault();const submit=form.querySelector('[type=submit]');const status=overlay.querySelector('#yeOperationStatus');const data=new FormData(form);const amount=Number(data.get('amount'));if(!Number.isFinite(amount)||amount<=0){status.textContent='Inserisci un importo valido.';return}if(!sb||!session){status.textContent='Accedi al tuo conto per procedere.';return}
+ submit.disabled=true;status.textContent='Verifica e registrazione in corso…';try{
+ let result;
+ if(type==='transfer'){
+ result=await sb.rpc('ye_client_transfer',{p_to:data.get('recipient').trim(),p_currency:data.get('currency'),p_amount:amount,p_reference:data.get('reference')||'',p_idempotency_key:crypto.randomUUID()});
+ }else{
+ result=await sb.rpc('ye_client_create_request',{p_kind:type,p_currency:data.get('currency'),p_amount:amount,p_destination:data.get('destination')||'',p_target:data.get('target')||'',p_reference:data.get('reference')||'',p_idempotency_key:crypto.randomUUID()});
+ }
+ if(result.error)throw result.error;
+ status.textContent=type==='transfer'?'Trasferimento interno contabilizzato. Riferimento: '+result.data:'Richiesta registrata. Riferimento: '+result.data;
+ await loadPrivate();setTimeout(()=>{overlay.remove();route()},1200);
+ }catch(err){status.textContent='Operazione non registrata: '+(err.message||String(err));submit.disabled=false;}
+ };
+}
+async function phoneVerification(){
+  if(!sb||!session){toast('Accedi al conto per verificare il telefono.');return}
+  const overlay=document.createElement('div');overlay.className='modal-overlay';
+  overlay.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="phoneTitle"><button class="modal-close" type="button" aria-label="Chiudi">×</button><div class="eyebrow">SICUREZZA ACCOUNT</div><h3 id="phoneTitle">Verifica telefonica</h3><p id="phoneHelp">Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.</p><form id="phoneStartForm"><label for="phoneNumber">Numero di telefono</label><input id="phoneNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="+39…" required maxlength="20"><div class="mt"><button class="primary full" type="submit">Invia codice SMS</button></div></form><form id="phoneOtpForm" hidden><label for="phoneOtp">Codice ricevuto via SMS</label><input id="phoneOtp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6 cifre" required><div class="mt"><button class="primary full" type="submit">Conferma codice</button></div><button class="secondary-btn" id="phoneRestart" type="button">Cambia numero</button></form><p id="phoneError" role="alert" class="small" aria-live="polite"></p></div>`;
+  document.body.append(overlay);
+  const close=()=>overlay.remove();overlay.querySelector('.modal-close').onclick=close;overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+  const start=overlay.querySelector('#phoneStartForm'),otp=overlay.querySelector('#phoneOtpForm'),err=overlay.querySelector('#phoneError'),help=overlay.querySelector('#phoneHelp');
+  const errorText=e=>{err.textContent=e?.message||'Operazione non riuscita. Riprova.'};
+  start.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');if(!/^\+[1-9]\d{7,14}$/.test(phone)){err.textContent='Usa il formato internazionale, ad esempio +39 seguito dal numero.';return}const btn=start.querySelector('button[type=submit]');btn.disabled=true;try{const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session){throw new Error('Sessione Supabase scaduta o assente. Esci dal conto, accedi nuovamente e riprova.')}session=authData.session;const {error}=await sb.auth.updateUser({phone});if(error)throw error;start.hidden=true;otp.hidden=false;help.textContent='Inserisci il codice SMS ricevuto per confermare il numero '+phone.replace(/.(?=.{3})/g,'•')+'.';overlay.querySelector('#phoneOtp').focus()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
+  otp.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const token=overlay.querySelector('#phoneOtp').value.trim();if(!/^\d{6}$/.test(token)){err.textContent='Inserisci il codice di 6 cifre.';return}const btn=otp.querySelector('button[type=submit]');btn.disabled=true;try{const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session)throw new Error('Sessione scaduta. Accedi nuovamente.');const {error}=await sb.auth.verifyOtp({phone,token,type:'phone_change'});if(error)throw error;const {data:{user},error:userError}=await sb.auth.getUser();if(userError)throw userError;if(session&&user)session={...session,user};close();toast('Numero di telefono verificato correttamente.');route()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
+  overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
+}
+async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
+if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
+// Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
+// Candlestick OHLC REALI da Kraken; nessuna candela sintetica.
+const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'SOLEUR',ripple:'XRPEUR',binancecoin:'BNBEUR'};
+const yeOhlcCache=new Map();
+const yeOhlcInFlight=new Map();
+function yeCandlePrice(v){return Number(v).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:v<1?5:2})+' €'}
+async function yeGetOhlc(assetId){
+ const pair=yeOhlcPairs[assetId];if(!pair)throw Error('Mercato OHLC non disponibile per questo asset');
+ const saved=yeOhlcCache.get(assetId);if(saved&&Date.now()-saved.at<60000)return saved.data;
+ if(yeOhlcInFlight.has(assetId))return yeOhlcInFlight.get(assetId);
+ const job=(async()=>{
+  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),9000);
+  try{
+   const r=await fetch('https://api.kraken.com/0/public/OHLC?pair='+encodeURIComponent(pair)+'&interval=60',{signal:ctrl.signal,cache:'no-store'});
+   if(!r.ok)throw Error('HTTP '+r.status);
+   const json=await r.json();if(json.error?.length)throw Error(json.error.join('; '));
+   const key=Object.keys(json.result||{}).find(k=>k!=='last');if(!key)throw Error('Serie OHLC assente');
+   const rows=json.result[key].map(x=>({t:Number(x[0])*1000,o:Number(x[1]),h:Number(x[2]),l:Number(x[3]),c:Number(x[4]),v:Number(x[6])})).filter(x=>[x.t,x.o,x.h,x.l,x.c,x.v].every(Number.isFinite)&&x.o>0&&x.h>=Math.max(x.o,x.c)&&x.l<=Math.min(x.o,x.c));
+   // Ultima candela Kraken in formazione: e' valida ma non chiusa, indicata nell'interfaccia.
+   if(rows.length<10)throw Error('Dati insufficienti');
+   const data=rows.slice(-96);yeOhlcCache.set(assetId,{at:Date.now(),data});return data;
+  }finally{clearTimeout(timer)}
+ 
+// === IBAN Management ===
+async function getClientIban(userId) {
+  const {data, error} = await sb.from('client_ibans').select('*').eq('user_id', userId).maybeSingle();
+  if (error) { console.warn('IBAN fetch error', error); return null; }
+  return data;
+}
+
+async function saveClientIban(userId, iban, bankName, holder, notes) {
+  const {error} = await sb.from('client_ibans').upsert({
+    user_id: userId,
+    iban: iban.trim(),
+    bank_name: bankName?.trim() || null,
+    account_holder: holder?.trim() || null,
+    notes: notes?.trim() || null
+  }, {onConflict: 'user_id'});
+  if (error) throw error;
+  toast('IBAN salvato');
+}
+
+async function createDepositRequest(userId) {
+  const {error} = await sb.from('deposit_requests').insert({user_id: userId, status: 'pending'});
+  if (error) console.warn('Deposit request error', error);
+}
+
+async function getPendingDepositRequests() {
+  const {data, error} = await sb.from('deposit_requests').select('*, user:user_id(email)').eq('status', 'pending').order('created_at', {ascending: false});
+  if (error) { console.warn('Pending requests error', error); return []; }
+  return data || [];
+}
+
+async function renderAdminIbanSection() {
+  const users = await adminRpc('list_users') || [];
+  const pending = await getPendingDepositRequests();
+  return `
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <span style="color:#38e5a3">📄</span>
+          <h3 style="margin:0">Nuovo IBAN</h3>
+        </div>
+        <div class="form-grid">
+          <label>Cliente
+            <select id="ibanUserSelect">
+              <option value="">— Seleziona cliente —</option>
+              ${users.map(u => '<option value="' + u.id + '">' + esc(u.email) + '</option>').join('')}
+            </select>
+          </label>
+          <label>Banca
+            <input id="ibanBank" placeholder="Nome banca" />
+          </label>
+          <label>IBAN
+            <input id="ibanInput" placeholder="IT60X0542811101000000123456" />
+          </label>
+          <label>Intestatario
+            <input id="ibanHolder" placeholder="Nome intestatario" />
+          </label>
+        </div>
+        <label style="margin-top:12px">Note
+          <input id="ibanNotes" placeholder="Note facoltative" />
+        </label>
+        <button class="primary" style="margin-top:16px" onclick="saveIbanFromForm()">📄 Salva IBAN</button>
+      </section>
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">🕐 Richieste deposito in attesa (${pending.length})</h3>
+          <button class="ghost" onclick="location.reload()">🔄 Aggiorna</button>
+        </div>
+        ${pending.length ? adminTable(pending, [
+          ['Data', r => adminDate(r.created_at)],
+          ['Cliente', r => esc(r.user?.email || r.user_id)],
+          ['Stato', r => '<span class="tag">In attesa</span>'],
+          ['Azione', r => '<button class="secondary-btn" onclick="resolveDepositRequest(\'' + r.id + '\')">Risolvi →</button>']
+        ]) : '<p class="small">Nessuna richiesta in attesa.</p>'}
+      </section>
+    </div>
+  `;
+}
+
+async function saveIbanFromForm() {
+  const userId = $('ibanUserSelect')?.value;
+  const iban = $('ibanInput')?.value;
+  if (!userId || !iban) { toast('Seleziona cliente e inserisci IBAN'); return; }
+  try {
+    await saveClientIban(userId, iban, $('ibanBank')?.value, $('ibanHolder')?.value, $('ibanNotes')?.value);
+    location.hash = '#admin?section=iban';
+    location.reload();
+  } catch(e) { toast('Errore: ' + e.message); }
+}
+
+async function resolveDepositRequest(id) {
+  const {error} = await sb.from('deposit_requests').update({status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: session.user.id}).eq('id', id);
+  if (error) { toast('Errore: ' + error.message); return; }
+  toast('Richiesta risolta');
+  location.reload();
+}
+
+// Override deposit action
+const originalAction = action;
+action = async function(type) {
+  if (type === 'deposit' && session) {
+    const iban = await getClientIban(session.user.id);
+    if (iban) {
+      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Coordinate bancarie</h3><p class="small"><strong>IBAN:</strong> ${esc(iban.iban)}</p>${iban.bank_name ? '<p class="small"><strong>Banca:</strong> ' + esc(iban.bank_name) + '</p>' : ''}${iban.account_holder ? '<p class="small"><strong>Intestatario:</strong> ' + esc(iban.account_holder) + '</p>' : ''}<p class="small" style="margin-top:12px;color:#8da79b">Usa queste coordinate per il bonifico.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+    } else {
+      await createDepositRequest(session.user.id);
+      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Conto in preparazione</h3><div class="ye-eur-spinner"></div><p class="small">Le tue coordinate bancarie sono in fase di preparazione. Riceverai una notifica quando saranno pronte.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+    }
+    return;
+  }
+  return originalAction(type);
+};
+
+})();yeOhlcInFlight.set(assetId,job);try{return await job}finally{yeOhlcInFlight.delete(assetId)}
+}
+function yeUpdateFooterLive(){const el=$('yeFooterQuotes');if(!el)return;const live=Object.values(quotes).some(q=>q?.yeLiveAt&&Date.now()-q.yeLiveAt<12000);el.textContent=live?'Quotazioni in tempo reale':'Quotazioni in aggiornamento';el.classList.toggle('ye-live',live)}
+setInterval(yeUpdateFooterLive,2000);
+function yeChartControls(id){return `<div class="ye-chart-controls" data-chart="${id}"><div class="ye-timeframes">${[['1','1m'],['5','5m'],['15','15m'],['30','30m'],['60','1H'],['240','4H'],['1440','1G']].map(([v,l])=>`<button type="button" data-interval="${v}" class="${v==='60'?'is-on':''}">${l}</button>`).join('')}</div><div class="ye-chart-tools"><button type="button" data-ma="toggle" class="is-on" title="Mostra/nascondi media mobile">MA20</button><button type="button" data-cross="1" class="is-on" title="Mirino e valori candela">⊕</button><button type="button" data-zoom="in" title="Ingrandisci">＋</button><button type="button" data-zoom="out" title="Riduci">－</button><button type="button" data-live="1">● LIVE</button><button type="button" data-fullscreen="1" title="Schermo intero">⛶</button></div></div>`}
+function yeMarketTitle(){const el=$('yeMarketChartTitle');if(el)el.textContent=(assets.find(a=>a.id===selected)?.name||'Asset')+' · grafico a candele'}
+const yeChartState=new Map();
+async function yeLoadChartRows(assetId,interval){
+ const pair=yeOhlcPairs[assetId];if(!pair)throw Error('Candele non disponibili per questo asset');
+ const key=assetId+':'+interval, saved=yeOhlcCache.get(key);
+ if(saved&&Date.now()-saved.at<45000)return saved.data;
+ const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),11000);
+ try{
+  const res=await fetch('https://api.kraken.com/0/public/OHLC?pair='+encodeURIComponent(pair)+'&interval='+interval,{signal:ctrl.signal,cache:'no-store'});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const json=await res.json();if(json.error?.length)throw Error(json.error.join(', '));
+  const keyName=Object.keys(json.result||{}).find(k=>k!=='last');if(!keyName)throw Error('OHLC non disponibili');
+  const data=json.result[keyName].map(x=>({t:Number(x[0])*1000,o:Number(x[1]),h:Number(x[2]),l:Number(x[3]),c:Number(x[4]),v:Number(x[6])})).filter(x=>[x.t,x.o,x.h,x.l,x.c,x.v].every(Number.isFinite)&&x.o>0&&x.h>=Math.max(x.o,x.c)&&x.l<=Math.min(x.o,x.c));
+  if(data.length<10)throw Error('Storico insufficiente');yeOhlcCache.set(key,{at:Date.now(),data});return data;
+ }finally{clearTimeout(timeout)}
+}
+function draw(id,assetId){
+ const canvas=$(id);if(!canvas)return;
+ if(canvas._yeChartCleanup)canvas._yeChartCleanup();
+ const host=canvas.parentElement,bar=canvas.closest('.ye-pro-chart, .card')?.querySelector(`.ye-chart-controls[data-chart="${id}"]`);
+ const old=yeChartState.get(id),state={assetId,interval:old?.interval||60,ma:old?.ma!==false,visible:old?.visible||80,end:0,hover:-1,cross:old?.cross!==false,rows:[],drag:null,serial:(old?.serial||0)+1};
+ yeChartState.set(id,state);
+ if(bar){bar.querySelectorAll('[data-interval]').forEach(b=>b.classList.toggle('is-on',Number(b.dataset.interval)===state.interval));bar.querySelector('[data-ma]')?.classList.toggle('is-on',state.ma)}
+ host.style.position='relative';let tip=host.querySelector('.ye-candle-tip');if(!tip){tip=document.createElement('div');tip.className='ye-candle-tip';tip.hidden=true;host.appendChild(tip)}
+ const L=16,R=96,T=22,B=32;
+ const render=()=>{
+  if(!canvas.isConnected)return;
+  const W=canvas.clientWidth,H=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);if(W<150||H<120)return;
+  const pixelW=Math.round(W*dpr),pixelH=Math.round(H*dpr);if(canvas.width!==pixelW)canvas.width=pixelW;if(canvas.height!==pixelH)canvas.height=pixelH;const c=canvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  if(!state.rows.length){c.fillStyle='#92b4a5';c.font='13px sans-serif';c.fillText('Caricamento candele reali…',18,35);return}
+  const all=state.rows,amount=Math.min(state.visible,all.length),end=Math.max(amount,Math.min(all.length,state.end||all.length)),start=Math.max(0,end-amount),rows=all.slice(start,end),plotW=W-L-R,volH=Math.max(40,H*.19),priceBottom=H-B-volH-16,priceH=priceBottom-T;
+  const low=Math.min(...rows.map(r=>r.l)),high=Math.max(...rows.map(r=>r.h)),pad=Math.max((high-low)*.09,high*.0005),lo=low-pad,hi=high+pad,py=v=>T+(hi-v)/(hi-lo)*priceH,cw=plotW/rows.length,bw=Math.max(1.5,Math.min(13,cw*.67));
+  c.font='11px system-ui';c.textBaseline='middle';
+  for(let i=0;i<5;i++){const y=T+priceH*i/4,value=hi-(hi-lo)*i/4;c.strokeStyle='#416a5748';c.setLineDash([2,5]);c.beginPath();c.moveTo(L,y);c.lineTo(W-R+6,y);c.stroke();c.setLineDash([]);c.fillStyle='#9ebbaa';c.textAlign='right';c.fillText(yeCandlePrice(value),W-4,y)}
+  for(let i=0;i<=4;i++){const x=L+plotW*i/4;c.strokeStyle='#3a604a25';c.beginPath();c.moveTo(x,T);c.lineTo(x,H-B);c.stroke();const r=rows[Math.min(rows.length-1,Math.round((rows.length-1)*i/4))];c.fillStyle='#9ebbaa';c.textAlign='center';c.textBaseline='bottom';c.fillText(new Date(r.t).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),x,H-4);c.textBaseline='middle'}
+  const maxVol=Math.max(1,...rows.map(r=>r.v));rows.forEach((r,i)=>{const x=L+(i+.5)*cw,up=r.c>=r.o,color=up?'#31e5a4':'#ff7185';c.fillStyle=up?'#31e5a455':'#ff718555';const vh=r.v/maxVol*volH;c.fillRect(x-bw/2,H-B-vh,bw,Math.max(1,vh));c.strokeStyle=color;c.lineWidth=1.15;c.beginPath();c.moveTo(x,py(r.h));c.lineTo(x,py(r.l));c.stroke();c.fillStyle=color;c.fillRect(x-bw/2,py(Math.max(r.o,r.c)),bw,Math.max(1,py(Math.min(r.o,r.c))-py(Math.max(r.o,r.c))))});
+  if(state.ma){c.beginPath();let first=true;for(let i=0;i<rows.length;i++){const globalIndex=start+i;if(globalIndex<19)continue;let sum=0;for(let j=globalIndex-19;j<=globalIndex;j++)sum+=all[j].c;const x=L+(i+.5)*cw,y=py(sum/20);if(first){c.moveTo(x,y);first=false}else c.lineTo(x,y)}c.strokeStyle='#f5c95f';c.lineWidth=1.8;c.stroke()}
+  const current=Number(quotes[assetId]?.current_price);if(Number.isFinite(current)&&current>=lo&&current<=hi){c.strokeStyle='#33e5a57a';c.setLineDash([5,5]);c.beginPath();c.moveTo(L,py(current));c.lineTo(W-R,py(current));c.stroke();c.setLineDash([])}
+  if(state.cross&&state.hover>=start&&state.hover<end){const i=state.hover-start,x=L+(i+.5)*cw,r=all[state.hover];c.strokeStyle='#d7f9e6a0';c.setLineDash([3,4]);c.beginPath();c.moveTo(x,T);c.lineTo(x,H-B);c.stroke();c.setLineDash([]);tip.hidden=false;tip.textContent=new Date(r.t).toLocaleString('it-IT')+' · O '+yeCandlePrice(r.o)+' · H '+yeCandlePrice(r.h)+' · L '+yeCandlePrice(r.l)+' · C '+yeCandlePrice(r.c)+' · Vol '+r.v.toLocaleString('it-IT',{maximumFractionDigits:3})}else tip.hidden=true;
+  const summary=$(id==='mainChart'?'yeChartSummaryMain':'yeChartSummaryMarket');if(summary&&rows.length){const last=rows.at(-1),first=rows[0],delta=(last.c/first.o-1)*100;const fields=[['Apertura',yeCandlePrice(last.o)],['Massimo',yeCandlePrice(last.h)],['Minimo',yeCandlePrice(last.l)],['Chiusura',yeCandlePrice(last.c)],['Variazione intervallo',(delta>=0?'+':'')+delta.toFixed(2)+'%'],['Volume',last.v.toLocaleString('it-IT',{maximumFractionDigits:3})]];summary.innerHTML=fields.map(([k,v])=>'<div><span>'+k+'</span><strong>'+v+'</strong></div>').join('');}const mainPrice=$('yeChartPriceMain');if(mainPrice&&id==='mainChart'){const q=Number(quotes.bitcoin?.current_price);if(Number.isFinite(q)&&q>0)mainPrice.textContent=yeCandlePrice(q)}const info=host.querySelector('.ye-chart-info');if(info)info.textContent=state.end&&state.end<all.length?'Storico · trascina per navigare':'Ultime candele · trascina per esplorare';
+ };
+ const load=async()=>{const request=++state.serial;state.rows=[];render();try{const data=await yeLoadChartRows(assetId,state.interval);if(yeChartState.get(id)!==state||request!==state.serial)return;state.rows=data;state.end=data.length;state.visible=Math.min(state.visible,data.length);render()}catch(err){if(yeChartState.get(id)!==state||request!==state.serial)return;const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.fillStyle='#f4b7a9';c.font='13px sans-serif';c.fillText(('Dati OHLC non disponibili: '+err.message).slice(0,95),15,35)}};
+ const locate=e=>{const rect=canvas.getBoundingClientRect(),n=Math.min(state.visible,state.rows.length),end=Math.max(n,Math.min(state.rows.length,state.end||state.rows.length));return Math.max(end-n,Math.min(end-1,end-n+Math.floor((e.clientX-rect.left-L)/Math.max(1,rect.width-L-R)*n)))};
+ const down=e=>{if(!state.rows.length)return;state.drag={x:e.clientX,end:state.end};canvas.style.cursor='grabbing';canvas.setPointerCapture?.(e.pointerId)};
+ let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;render()})};
+ const move=e=>{if(state.drag){const delta=Math.round((e.clientX-state.drag.x)/Math.max(1,(canvas.clientWidth-L-R)/state.visible));state.end=Math.max(Math.min(state.visible,state.rows.length),Math.min(state.rows.length,state.drag.end-delta));state.hover=-1}else state.hover=locate(e);schedule()};
+ const up=()=>{state.drag=null;canvas.style.cursor='crosshair'};const leave=()=>{if(!state.drag){state.hover=-1;schedule()}};
+ const wheel=e=>{if(!state.rows.length)return;e.preventDefault();state.visible=Math.max(12,Math.min(state.rows.length,state.visible+(e.deltaY>0?10:-10)));state.end=Math.max(state.visible,Math.min(state.rows.length,state.end));render()};
+ const click=e=>{const b=e.target.closest('button');if(!b||!bar.contains(b))return;if(b.dataset.interval){const n=Number(b.dataset.interval);if(n!==state.interval){state.interval=n;bar.querySelectorAll('[data-interval]').forEach(x=>x.classList.toggle('is-on',x===b));load()}}else if(b.dataset.ma){state.ma=!state.ma;b.classList.toggle('is-on',state.ma);render()}else if(b.dataset.cross){state.cross=!state.cross;b.classList.toggle('is-on',state.cross);render()}else if(b.dataset.zoom){if(!state.rows.length)return;state.visible=Math.max(12,Math.min(state.rows.length,state.visible+(b.dataset.zoom==='in'?-12:12)));render()}else if(b.dataset.live){state.end=state.rows.length;load()}else if(b.dataset.fullscreen){const panel=canvas.closest('.card');if(document.fullscreenElement)document.exitFullscreen?.();else panel?.requestFullscreen?.()}};
+ canvas.style.touchAction='pan-y';canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('pointerleave',leave);canvas.addEventListener('wheel',wheel,{passive:false});bar?.addEventListener('click',click);window.addEventListener('resize',render);
+ canvas._yeChartCleanup=()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('pointerleave',leave);canvas.removeEventListener('wheel',wheel);bar?.removeEventListener('click',click);window.removeEventListener('resize',render)};
+ const refresh=setInterval(async()=>{if(!canvas.isConnected){clearInterval(refresh);return}if(document.hidden||state.drag)return;try{const data=await yeLoadChartRows(assetId,state.interval);if(yeChartState.get(id)!==state)return;const atEnd=state.end>=state.rows.length;state.rows=data;if(atEnd)state.end=data.length;schedule()}catch(e){}},15000);const previousCleanup=canvas._yeChartCleanup;canvas._yeChartCleanup=()=>{clearInterval(refresh);previousCleanup()};canvas._yeCandle={assetId,paint:render};load();
+}
+function drawSparkFallback(id,assetId){
+ const canvas=$(id);if(!canvas)return;
+ const item=quotes[assetId],raw=item?.sparkline_in_7d?.price;
+ const values=Array.isArray(raw)?raw.map(Number).filter(Number.isFinite):[];
+ const old=canvas._yeChartCleanup;if(old)old();
+ const host=canvas.parentElement;
+ let tip=host.querySelector('.ye-chart-tooltip');
+ if(!tip){host.style.position='relative';tip=document.createElement('div');tip.className='ye-chart-tooltip';tip.hidden=true;host.appendChild(tip)}
+ const priceFormat=n=>'€ '+Number(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:n<1?5:2});
+ if(values.length<2){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#9ab3a5';ctx.font='13px sans-serif';ctx.fillText('Storico non disponibile: attendi i dati di mercato.',18,40);return}
+ let hover=-1;
+ const render=()=>{
+  if(!canvas.isConnected)return;
+  const dpr=Math.min(window.devicePixelRatio||1,3),w=canvas.clientWidth,h=canvas.clientHeight;
+  if(w<50||h<80)return;
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  const left=14,right=84,top=23,bottom=32,pw=Math.max(10,w-left-right),ph=h-top-bottom;
+  const current=Number(quotes[assetId]?.current_price);
+  // L'ultimo tick live e' distinto dai punti storici; non inventare candele o intervalli.
+  const live=Number.isFinite(current)&&current>0?current:values.at(-1);
+  const min=Math.min(...values,live),max=Math.max(...values,live),margin=(max-min||max*.005||1)*.14;
+  const lo=min-margin,hi=max+margin,scale=hi-lo||1;
+  const xy=(v,i)=>[left+(i/(values.length-1))*pw,top+(hi-v)/scale*ph];
+  const points=values.map(xy);const y=v=>top+(hi-v)/scale*ph;
+  ctx.font='11px DM Sans, sans-serif';ctx.textBaseline='middle';
+  for(let i=0;i<5;i++){
+   const value=lo+(hi-lo)*(4-i)/4,yy=y(value);
+   ctx.strokeStyle='rgba(113,160,137,.16)';ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right+9,yy);ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle='#8eab9a';ctx.textAlign='right';ctx.fillText(priceFormat(value),w-5,yy);
+  }
+  const start=Date.now()-7*86400000;
+  ctx.textAlign='center';ctx.fillStyle='#8eab9a';ctx.textBaseline='bottom';
+  for(let i=0;i<=4;i++){const x=left+pw*i/4;const dt=new Date(start+7*86400000*i/4);ctx.fillText(dt.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}),x,h-4)}
+  const up=values.at(-1)>=values[0],stroke=up?'#38e5a3':'#f37d87';
+  const fill=ctx.createLinearGradient(0,top,0,h-bottom);fill.addColorStop(0,up?'rgba(56,229,163,.25)':'rgba(243,125,135,.20)');fill.addColorStop(1,'rgba(56,229,163,0)');
+  ctx.beginPath();points.forEach(([x,yy],i)=>i?ctx.lineTo(x,yy):ctx.moveTo(x,yy));ctx.lineTo(points.at(-1)[0],h-bottom);ctx.lineTo(left,h-bottom);ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+  ctx.beginPath();points.forEach(([x,yy],i)=>i?ctx.lineTo(x,yy):ctx.moveTo(x,yy));ctx.lineWidth=2.6;ctx.lineJoin='round';ctx.lineCap='round';ctx.strokeStyle=stroke;ctx.shadowColor=stroke;ctx.shadowBlur=9;ctx.stroke();ctx.shadowBlur=0;
+  // Prezzo live corrente: indicatore tratteggiato, non parte della serie storica.
+  const ly=y(live);ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(56,229,163,.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,ly);ctx.lineTo(w-right+9,ly);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#38e5a3';ctx.beginPath();ctx.arc(w-right+9,ly,4,0,Math.PI*2);ctx.fill();
+  if(hover>=0){const i=Math.min(values.length-1,hover),[x,yy]=points[i];ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(232,255,242,.45)';ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,h-bottom);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=stroke;ctx.beginPath();ctx.arc(x,yy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0c2118';ctx.lineWidth=2;ctx.stroke()}
+ };
+ const move=e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left;hover=Math.max(0,Math.min(values.length-1,Math.round((x-14)/Math.max(1,r.width-98)*(values.length-1))));const date=new Date(Date.now()-7*86400000+hover/(values.length-1)*7*86400000);tip.textContent=date.toLocaleString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+priceFormat(values[hover]);tip.hidden=false;tip.style.left=Math.max(10,Math.min(r.width-170,x+12))+'px';tip.style.top='44px';render()};
+ const leave=()=>{hover=-1;tip.hidden=true;render()};
+ canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerleave',leave);
+ window.addEventListener('resize',render);
+ canvas._yeChartCleanup=()=>{canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerleave',leave);window.removeEventListener('resize',render)};
+ requestAnimationFrame(render);
+}
+
+async function init(){if(!sb){$('authNote').textContent='Per attivare l’accesso inserisci la Publishable Key nel file config.js.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){$('authScreen').hidden=false;$('appScreen').hidden=true;authMode('recovery')}else if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT'){if(mode!=='recovery')exit()}else if(event==='PASSWORD_RECOVERY'){session=null;$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('recovery');toast('Inserisci una nuova password per completare il recupero.');}else if(event==='SIGNED_IN'&&newSession&&!session&&mode!=='recovery')setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
+
+// === IBAN Management ===
+async function getClientIban(userId) {
+  const {data, error} = await sb.from('client_ibans').select('*').eq('user_id', userId).maybeSingle();
+  if (error) { console.warn('IBAN fetch error', error); return null; }
+  return data;
+}
+
+async function saveClientIban(userId, iban, bankName, holder, notes) {
+  const {error} = await sb.from('client_ibans').upsert({
+    user_id: userId,
+    iban: iban.trim(),
+    bank_name: bankName?.trim() || null,
+    account_holder: holder?.trim() || null,
+    notes: notes?.trim() || null
+  }, {onConflict: 'user_id'});
+  if (error) throw error;
+  toast('IBAN salvato');
+}
+
+async function createDepositRequest(userId) {
+  const {error} = await sb.from('deposit_requests').insert({user_id: userId, status: 'pending'});
+  if (error) console.warn('Deposit request error', error);
+}
+
+async function getPendingDepositRequests() {
+  const {data, error} = await sb.from('deposit_requests').select('*, user:user_id(email)').eq('status', 'pending').order('created_at', {ascending: false});
+  if (error) { console.warn('Pending requests error', error); return []; }
+  return data || [];
+}
+
+async function renderAdminIbanSection() {
+  const users = await adminRpc('list_users') || [];
+  const pending = await getPendingDepositRequests();
+  return `
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <span style="color:#38e5a3">📄</span>
+          <h3 style="margin:0">Nuovo IBAN</h3>
+        </div>
+        <div class="form-grid">
+          <label>Cliente
+            <select id="ibanUserSelect">
+              <option value="">— Seleziona cliente —</option>
+              ${users.map(u => '<option value="' + u.id + '">' + esc(u.email) + '</option>').join('')}
+            </select>
+          </label>
+          <label>Banca
+            <input id="ibanBank" placeholder="Nome banca" />
+          </label>
+          <label>IBAN
+            <input id="ibanInput" placeholder="IT60X0542811101000000123456" />
+          </label>
+          <label>Intestatario
+            <input id="ibanHolder" placeholder="Nome intestatario" />
+          </label>
+        </div>
+        <label style="margin-top:12px">Note
+          <input id="ibanNotes" placeholder="Note facoltative" />
+        </label>
+        <button class="primary" style="margin-top:16px" onclick="saveIbanFromForm()">📄 Salva IBAN</button>
+      </section>
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">🕐 Richieste deposito in attesa (${pending.length})</h3>
+          <button class="ghost" onclick="location.reload()">🔄 Aggiorna</button>
+        </div>
+        ${pending.length ? adminTable(pending, [
+          ['Data', r => adminDate(r.created_at)],
+          ['Cliente', r => esc(r.user?.email || r.user_id)],
+          ['Stato', r => '<span class="tag">In attesa</span>'],
+          ['Azione', r => '<button class="secondary-btn" onclick="resolveDepositRequest(\'' + r.id + '\')">Risolvi →</button>']
+        ]) : '<p class="small">Nessuna richiesta in attesa.</p>'}
+      </section>
+    </div>
+  `;
+}
+
+async function saveIbanFromForm() {
+  const userId = $('ibanUserSelect')?.value;
+  const iban = $('ibanInput')?.value;
+  if (!userId || !iban) { toast('Seleziona cliente e inserisci IBAN'); return; }
+  try {
+    await saveClientIban(userId, iban, $('ibanBank')?.value, $('ibanHolder')?.value, $('ibanNotes')?.value);
+    location.hash = '#admin?section=iban';
+    location.reload();
+  } catch(e) { toast('Errore: ' + e.message); }
+}
+
+async function resolveDepositRequest(id) {
+  const {error} = await sb.from('deposit_requests').update({status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: session.user.id}).eq('id', id);
+  if (error) { toast('Errore: ' + error.message); return; }
+  toast('Richiesta risolta');
+  location.reload();
+}
+
+// Override deposit action
+const originalAction = action;
+action = async function(type) {
+  if (type === 'deposit' && session) {
+    const iban = await getClientIban(session.user.id);
+    if (iban) {
+      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Coordinate bancarie</h3><p class="small"><strong>IBAN:</strong> ${esc(iban.iban)}</p>${iban.bank_name ? '<p class="small"><strong>Banca:</strong> ' + esc(iban.bank_name) + '</p>' : ''}${iban.account_holder ? '<p class="small"><strong>Intestatario:</strong> ' + esc(iban.account_holder) + '</p>' : ''}<p class="small" style="margin-top:12px;color:#8da79b">Usa queste coordinate per il bonifico.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+    } else {
+      await createDepositRequest(session.user.id);
+      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Conto in preparazione</h3><div class="ye-eur-spinner"></div><p class="small">Le tue coordinate bancarie sono in fase di preparazione. Riceverai una notifica quando saranno pronte.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+    }
+    return;
+  }
+  return originalAction(type);
+};
+
+})();
