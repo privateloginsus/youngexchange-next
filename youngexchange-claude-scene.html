@@ -205,7 +205,7 @@ var gemFS=['precision highp float;varying vec3 vN;varying vec3 vW;varying vec3 v
 ' if(uRefl>.5){if(vW.y>uPlane)discard;float fd=clamp(1.-(uPlane-vW.y)/uFall,0.,1.);fd*=fd;a*=fd*.6;col*=.8;}',
 ' gl_FragColor=vec4(col,a);}'].join('\n');
 function gemMat(m,refl){return new THREE.ShaderMaterial({uniforms:{uT:U.uT,uInner:{value:m},uRefl:{value:refl?1:0},uPlane:RP,uFall:RF},vertexShader:VS,fragmentShader:gemFS,transparent:m==1||m==3||!!refl,blending:m==1?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:(m==0||m==2)&&!refl,side:(m==1||m==2)?THREE.BackSide:THREE.FrontSide});}
-var RP={value:0},RF={value:1};var gem=new THREE.Group();gem.scale.setScalar(0.47);gem.position.y=1.50;root.add(gem);
+var RP={value:0},RF={value:1};var gem=new THREE.Group();gem.scale.setScalar(0.42);gem.position.y=1.52;root.add(gem);
 var gb=new THREE.Mesh(geo,gemMat(2));gb.renderOrder=0;gem.add(gb);var gf=new THREE.Mesh(geo,gemMat(3));gf.renderOrder=3;gem.add(gf);
 var core=new THREE.Mesh(geo,gemMat(1));core.scale.setScalar(.68);core.rotation.y=.4;core.position.y=.28;core.renderOrder=1;gem.add(core);
 var core2=new THREE.Mesh(geo,gemMat(1));core2.scale.set(.42,.5,.42);core2.rotation.y=-.3;core2.position.y=.35;core2.renderOrder=2;gem.add(core2);
