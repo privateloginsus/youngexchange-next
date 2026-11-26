@@ -71,6 +71,18 @@ window.saveIbanManual = async function() {
   };
   localStorage.setItem("iban_" + userId.trim(), JSON.stringify(ibanData));
   try {
+    // Store in profiles using a special prefix in display_name
+    const {error} = await client.from("profiles").update({
+      display_name: "IBAN:" + JSON.stringify(ibanData)
+    }).eq("id", userId.trim());
+    if (error) throw error;
+    alert("IBAN salvato. Il cliente lo vedrà da qualsiasi dispositivo.");
+  } catch(e) { 
+    alert("Salvato localmente. Per il salvataggio permanente esegui lo SQL di abilitazione."); 
+  }
+};
+  localStorage.setItem("iban_" + userId.trim(), JSON.stringify(ibanData));
+  try {
     const {error} = await client.from("client_iban_data").upsert({
       user_id: userId.trim(),
       iban: ibanData.iban,
