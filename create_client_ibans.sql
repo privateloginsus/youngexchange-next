@@ -1,5 +1,5 @@
--- Esegui questo SQL nel Supabase SQL Editor (Dashboard > SQL Editor)
--- Crea la tabella per salvare gli IBAN dei clienti
+-- Esegui questo SQL nel Supabase SQL Editor
+-- Versione corretta senza dipendenza da profiles.role
 
 CREATE TABLE IF NOT EXISTS public.client_ibans (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -12,37 +12,29 @@ CREATE TABLE IF NOT EXISTS public.client_ibans (
   updated_at timestamptz DEFAULT now()
 );
 
--- Abilita RLS
 ALTER TABLE public.client_ibans ENABLE ROW LEVEL SECURITY;
 
--- Policy: solo admin possono inserire/aggiornare
+-- Policy: admin (tramite funzione esistente) o il proprietario
+DROP POLICY IF EXISTS "Admins can manage IBANs" ON public.client_ibans;
 CREATE POLICY "Admins can manage IBANs" ON public.client_ibans
   FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-    OR auth.uid() = user_id
+    auth.uid() = user_id
+    OR (SELECT is_youngexchange_admin() FROM (SELECT 1) s)
   )
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
+    (SELECT is_youngexchange_admin() FROM (SELECT 1) s)
   );
 
--- Policy: il cliente può leggere solo il proprio IBAN
+-- Policy lettura per il cliente
+DROP POLICY IF EXISTS "Users can view own IBAN" ON public.client_ibans;
 CREATE POLICY "Users can view own IBAN" ON public.client_ibans
   FOR SELECT
   USING (auth.uid() = user_id);
 
--- Index per performance
 CREATE INDEX IF NOT EXISTS idx_client_ibans_user_id ON public.client_ibans(user_id);
 
--- Trigger per updated_at
+-- Trigger updated_at (se non esiste già)
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
