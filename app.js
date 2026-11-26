@@ -284,9 +284,12 @@ if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
       let data = null;
-      // Try profiles first (works across devices)
-      const {data:prof} = await sb.from("profiles").select("display_name").eq("id", session.user.id).maybeSingle();
-      if(prof?.display_name?.startsWith("IBAN:")){ try{ data = JSON.parse(prof.display_name.slice(5)); }catch(e){} }
+      // Read from operation_requests (works across devices)
+      const {data:reqs} = await sb.from("operation_requests").select("reference").eq("user_id", session.user.id).eq("operation_type", "iban_info").order("created_at", {ascending:false}).limit(1);
+      if(reqs?.[0]?.reference?.startsWith("IBAN:")){
+        const parts = reqs[0].reference.slice(5).split("|");
+        data = {iban:parts[0]||"", bank_name:parts[1]||"", account_holder:parts[2]||""};
+      }
       // Fallback to localStorage
       if(!data){
         const local = localStorage.getItem("iban_" + session.user.id);
