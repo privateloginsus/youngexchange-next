@@ -96,26 +96,39 @@ window.saveIbanManual = async function() {
 };
 })();
 
-// Force IBAN tile click to work
-document.addEventListener('click', function(e){
-  const tile = e.target.closest('[data-admin-section="iban"]');
-  if(tile){
-    e.preventDefault();
-    e.stopPropagation();
-    const content = document.getElementById('pageContent');
-    if(content){
-      content.innerHTML = `<section class="card">
-        <h3>Gestione IBAN Clienti</h3>
-        <p class="small">Inserisci le coordinate bancarie per un cliente.</p>
-        <div class="form-grid" style="margin-top:16px">
-          <label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label>
-          <label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label>
-          <label>Banca<input id="ibanBank" placeholder="Nome banca" /></label>
-          <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
-          <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
-        </div>
-        <button class="primary" style="margin-top:16px" onclick="saveIbanManual()">Salva IBAN</button>
-      </section>`;
-    }
+// Force IBAN tile injection
+(function forceIbanTile(){
+  function inject(){
+    const grid = document.querySelector('.ye-plat-admin-grid');
+    if(!grid || grid.querySelector('[data-admin-section="iban"]')) return;
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'ye-plat-admin-tile';
+    tile.dataset.adminSection = 'iban';
+    tile.innerHTML = '<span class="ye-plat-admin-tile-icon">🏦</span><span><strong>IBAN Clienti</strong><small>Gestione coordinate bancarie</small></span><span class="ye-plat-admin-chevron">↗</span>';
+    tile.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const content = document.getElementById('pageContent');
+      if(content){
+        content.innerHTML = `<section class="card">
+          <h3>Gestione IBAN Clienti</h3>
+          <p class="small">Inserisci le coordinate bancarie per un cliente.</p>
+          <div class="form-grid" style="margin-top:16px">
+            <label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label>
+            <label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label>
+            <label>Banca<input id="ibanBank" placeholder="Nome banca" /></label>
+            <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
+            <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
+          </div>
+          <button class="primary" style="margin-top:16px" onclick="saveIbanManual()">Salva IBAN</button>
+        </section>`;
+      }
+    };
+    grid.appendChild(tile);
   }
-}, true);
+  setTimeout(inject, 300);
+  setTimeout(inject, 800);
+  setTimeout(inject, 1500);
+  setInterval(inject, 2000);
+})();
