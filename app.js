@@ -268,7 +268,25 @@ function openOperation(type){
  const swap=type==='swap'||type==='buy'||type==='sell'?field('Asset desiderato','<select name="target">'+currencies+'</select>'):'';
  const disclaimer=type==='deposit'?'La richiesta sarà salvata sul tuo conto. Le coordinate di pagamento devono essere assegnate dall’amministrazione.':type==='transfer'?'Il trasferimento tra conti YoungExchange viene registrato solo dopo la conferma del server.':type==='withdraw'?'Il prelievo viene inviato all’amministrazione per approvazione; l’approvazione non equivale all’invio esterno.':'Inserisci i dati per una richiesta di operazione. Il prezzo indicativo non costituisce un’esecuzione.';
  overlay.innerHTML='<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / OPERAZIONI</div><h3>'+esc(title)+'</h3><p>'+esc(disclaimer)+'</p><form id="yeOperationForm">'+currency+amount+destination+swap+common+'<div class="notice" id="yeOperationStatus" role="status">I dati saranno verificati prima della registrazione.</div><button class="primary full mt" type="submit">'+(type==='transfer'?'Conferma trasferimento interno':'Invia richiesta')+'</button></form></div>';
- document.body.append(overlay);overlay.querySelector('.modal-close').onclick=()=>overlay.remove();overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+ document.body.append(overlay);overlay.querySelector('.modal-close').onclick=()=>overlay.remove();
+if(type==='deposit' && session?.user?.id){
+  (async ()=>{
+    try{
+      const {data,error} = await sb.from('client_ibans').select('*').eq('user_id', session.user.id).maybeSingle();
+      if(!error && data){
+        const notice = overlay.querySelector('#yeOperationStatus');
+        if(notice){
+          notice.innerHTML = '<strong>Coordinate bancarie per il deposito:</strong><br>'+
+            'IBAN: <strong>'+esc(data.iban||'')+'</strong><br>'+
+            (data.bank_name?'Banca: '+esc(data.bank_name)+'<br>':'')+
+            (data.account_holder?'Intestatario: '+esc(data.account_holder)+'<br>':'')+
+            '<span class="small">Usa queste coordinate per il bonifico.</span>';
+          notice.style.borderColor = '#19e68c';
+        }
+      }
+    }catch(e){console.warn('IBAN non disponibile',e)}
+  })();
+}overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
  const form=overlay.querySelector('form');form.onsubmit=async e=>{e.preventDefault();const submit=form.querySelector('[type=submit]');const status=overlay.querySelector('#yeOperationStatus');const data=new FormData(form);const amount=Number(data.get('amount'));if(!Number.isFinite(amount)||amount<=0){status.textContent='Inserisci un importo valido.';return}if(!sb||!session){status.textContent='Accedi al tuo conto per procedere.';return}
  submit.disabled=true;status.textContent='Verifica e registrazione in corso…';try{
  let result;
