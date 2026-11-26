@@ -467,3 +467,41 @@ function drawSparkFallback(id,assetId){
 
 async function init(){if(!sb){$('authNote').textContent='Per attivare l’accesso inserisci la Publishable Key nel file config.js.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){$('authScreen').hidden=false;$('appScreen').hidden=true;authMode('recovery')}else if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT'){if(mode!=='recovery')exit()}else if(event==='PASSWORD_RECOVERY'){session=null;$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('recovery');toast('Inserisci una nuova password per completare il recupero.');}else if(event==='SIGNED_IN'&&newSession&&!session&&mode!=='recovery')setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
 })();
+
+// Direct IBAN tile click
+document.addEventListener("click", function(e){
+  var tile = e.target.closest("[data-admin-section=iban]");
+  if(tile){
+    e.stopPropagation();
+    var content = document.getElementById("pageContent");
+    if(content){
+      content.innerHTML = `<section class="card">
+        <h3>Gestione IBAN Clienti</h3>
+        <p class="small">Inserisci le coordinate bancarie per un cliente.</p>
+        <div class="form-grid" style="margin-top:16px">
+          <label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label>
+          <label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label>
+          <label>Banca<input id="ibanBank" placeholder="Nome banca" /></label>
+          <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
+          <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
+        </div>
+        <button class="primary" style="margin-top:16px" id="ibanSaveBtn">Salva IBAN</button>
+      </section>`;
+      document.getElementById("ibanSaveBtn").onclick = async function(){
+        var u = document.getElementById("ibanUserId").value;
+        var i = document.getElementById("ibanInput").value;
+        if(!u || !i){ alert("Inserisci ID e IBAN"); return; }
+        var d = {iban:i.trim(), bank_name:document.getElementById("ibanBank").value.trim(), account_holder:document.getElementById("ibanHolder").value.trim(), notes:document.getElementById("ibanNotes").value.trim()};
+        localStorage.setItem("iban_"+u.trim(), JSON.stringify(d));
+        try{
+          var c = window.sb;
+          if(!c) throw Error("no sb");
+          var ref = "IBAN:"+d.iban+"|"+d.bank_name+"|"+d.account_holder;
+          var r = await c.from("operation_requests").insert({user_id:u.trim(), operation_type:"iban_info", currency:"EUR", amount:0, status:"completed", reference:ref});
+          if(r.error) throw r.error;
+          alert("IBAN salvato su Supabase");
+        }catch(e){ alert("Errore: "+e.message); }
+      };
+    }
+  }
+}, true);
