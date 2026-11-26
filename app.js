@@ -273,8 +273,10 @@ if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
       let data = null;
-      const {data:db} = await sb.from("client_iban_data").select("*").eq("user_id", session.user.id).maybeSingle();
-      if(db) data = db;
+      // Try profiles first (works across devices)
+      const {data:prof} = await sb.from("profiles").select("display_name").eq("id", session.user.id).maybeSingle();
+      if(prof?.display_name?.startsWith("IBAN:")){ try{ data = JSON.parse(prof.display_name.slice(5)); }catch(e){} }
+      // Fallback to localStorage
       if(!data){
         const local = localStorage.getItem("iban_" + session.user.id);
         if(local){ try{ data = JSON.parse(local); }catch(e){} }
