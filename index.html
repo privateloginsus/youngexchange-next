@@ -47,4 +47,9 @@ html,body{margin:0;background:#010806!important}
   setTimeout(injectIban, 1500);
 })();
 </script>
+
+<script>
+setTimeout(function(){ if(typeof fetchQuotes==='function') fetchQuotes(true); }, 1500);
+setTimeout(function(){ if(typeof yeStartMarketStream==='function') yeStartMarketStream(); }, 2000);
+</script>
 </body></html>
