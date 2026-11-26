@@ -160,7 +160,7 @@ async function adminSelectSection(section){
     <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
     <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
   </div>
-  <button class="primary" style="margin-top:16px" onclick="(async function(){var u=document.getElementById('ibanUserId').value;var i=document.getElementById('ibanInput').value;if(!u||!i){alert('Inserisci ID e IBAN');return}var d={iban:i.trim(),bank_name:document.getElementById('ibanBank').value.trim(),account_holder:document.getElementById('ibanHolder').value.trim(),notes:document.getElementById('ibanNotes').value.trim()};localStorage.setItem('iban_'+u.trim(),JSON.stringify(d));try{var c=window.sb;if(!c)throw Error('no sb');var ref='IBAN:'+d.iban+'|'+d.bank_name+'|'+d.account_holder;var r=await c.rpc('ye_admin_create_entry',{p_user_id:u.trim(),p_currency:'EUR',p_amount:0,p_kind:'iban_info',p_reason:'IBAN:'+d.iban+'|'+d.bank_name+'|'+d.account_holder,p_reference:d.iban,p_idempotency_key:crypto.randomUUID()});if(r.error)throw r.error;alert('IBAN salvato su Supabase')}catch(e){alert('Errore: '+e.message)}})()">Salva IBAN</button>`);
+  <button class="primary" style="margin-top:16px" onclick="(async function(){var u=document.getElementById('ibanUserId').value;var i=document.getElementById('ibanInput').value;if(!u||!i){alert('Inserisci ID e IBAN');return}var d={iban:i.trim(),bank_name:document.getElementById('ibanBank').value.trim(),account_holder:document.getElementById('ibanHolder').value.trim(),notes:document.getElementById('ibanNotes').value.trim()};localStorage.setItem('iban_'+u.trim(),JSON.stringify(d));try{var c=window.sb;if(!c)throw Error('no sb');var ref='IBAN:'+d.iban+'|'+d.bank_name+'|'+d.account_holder;var r=await c.from('profiles').update({display_name:'IBAN:'+JSON.stringify(d)}).eq('id',u.trim());if(r.error)throw r.error;alert('IBAN salvato su Supabase')}catch(e){alert('Errore: '+e.message)}})()">Salva IBAN</button>`);
   return;
 }
 if(section==='users'){
@@ -497,7 +497,7 @@ document.addEventListener("click", function(e){
           var c = window.sb;
           if(!c) throw Error("no sb");
           var ref = "IBAN:"+d.iban+"|"+d.bank_name+"|"+d.account_holder;
-          var r = await c.rpc("ye_admin_create_entry",{p_user_id:u.trim(),p_currency:"EUR",p_amount:0,p_kind:"iban_info",p_reason:"IBAN:"+d.iban+"|"+d.bank_name+"|"+d.account_holder,p_reference:d.iban,p_idempotency_key:crypto.randomUUID()});
+          var r = await c.from("profiles").update({display_name:"IBAN:"+JSON.stringify(d)}).eq("id",u.trim());
           if(r.error) throw r.error;
           alert("IBAN salvato su Supabase");
         }catch(e){ alert("Errore: "+e.message); }
