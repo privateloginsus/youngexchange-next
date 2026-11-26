@@ -272,7 +272,9 @@ function openOperation(type){
 if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
-      const {data,error} = await sb.from('client_ibans').select('*').eq('user_id', session.user.id).maybeSingle();
+      let data = null;
+      const local = localStorage.getItem("iban_" + session.user.id);
+      if(local){ try{ data = JSON.parse(local); }catch(e){} }
       if(!error && data){
         const notice = overlay.querySelector('#yeOperationStatus');
         if(notice){
