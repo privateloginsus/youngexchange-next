@@ -62,16 +62,20 @@ window.saveIbanManual = async function() {
   const iban = document.getElementById("ibanInput")?.value;
   if (!userId || !iban) { alert("Inserisci ID utente e IBAN"); return; }
   const client = window.sb;
-  if (!client) { alert("Errore: connessione al database non disponibile. Ricarica la pagina."); return; }
+  if (!client) { alert("Errore: connessione non disponibile"); return; }
+  const ibanData = {
+    iban: iban.trim(),
+    bank_name: document.getElementById("ibanBank")?.value?.trim() || "",
+    account_holder: document.getElementById("ibanHolder")?.value?.trim() || "",
+    notes: document.getElementById("ibanNotes")?.value?.trim() || ""
+  };
+  localStorage.setItem("iban_" + userId.trim(), JSON.stringify(ibanData));
   try {
     const {error} = await client.from("profiles").update({
-      iban: iban.trim(),
-      bank_name: document.getElementById("ibanBank")?.value?.trim() || null,
-      account_holder: document.getElementById("ibanHolder")?.value?.trim() || null,
-      iban_notes: document.getElementById("ibanNotes")?.value?.trim() || null
+      display_name: "[IBAN]" + JSON.stringify(ibanData)
     }).eq("id", userId.trim());
     if (error) throw error;
     alert("IBAN salvato con successo");
-  } catch(e) { alert("Errore nel salvataggio: " + (e.message || String(e))); }
+  } catch(e) { alert("Salvato localmente. Errore DB: " + (e.message || e)); }
 };
 })();
