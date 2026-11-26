@@ -152,7 +152,18 @@ async function adminSelectSection(section){
  activeAdminSection=section;document.querySelectorAll('[data-admin-section]').forEach(b=>b.classList.toggle('active',b.dataset.adminSection===section));workspace.innerHTML='<section class="card"><h3>Caricamento '+esc(section)+'…</h3></section>';
  const view=(title,body)=>{if(activeAdminSection===section&&workspace.isConnected)workspace.innerHTML='<section class="card"><h3>'+esc(title)+'</h3>'+body+'</section>'};
  try{
- if(section==='users'){
+ if(section==='iban'){
+  view('Gestione IBAN Clienti',`<div class="form-grid" style="margin-top:16px">
+    <label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label>
+    <label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label>
+    <label>Banca<input id="ibanBank" placeholder="Nome banca" /></label>
+    <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
+    <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
+  </div>
+  <button class="primary" style="margin-top:16px" onclick="saveIbanManual()">Salva IBAN</button>`);
+  return;
+}
+if(section==='users'){
   const users=await adminRpc('admin_list_users');
   view('Utenti e conti',`<div class="mt"><h3>Crea account cliente</h3><p class="small">Crea un account cliente NON verificato, senza invito. Il cliente richiede personalmente il codice email OTP dalla pagina Accesso OTP. Il telefono resta non verificato.</p><form id="adminInviteForm"><label>Nome e cognome</label><input name="name" maxlength="120" required><label>Email</label><input name="email" type="email" required><label>Telefono (facoltativo, formato +39...)</label><input name="phone" type="tel" placeholder="+393..."><button class="primary" type="submit">Crea account non verificato</button></form></div><div class="divider"></div>`+'<p class="small">Utenti registrati: '+users.length+'</p>'+adminTools(users,'utenti')+'<div data-admin-results="utenti">'+adminTable(users,[['ID Utente',u=>adminCell(u.user_id||u.id)],['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]])+'</div><label for="adminUser">Visualizza portafogli e operazioni utente</label><select id="adminUser"><option value="">— Seleziona un utente —</option>'+users.map(u=>'<option value="'+esc(u.user_id)+'" '+(u.user_id===adminSelectedUser?'selected':'')+'>'+esc(u.email||u.display_name||u.user_id)+'</option>').join('')+'</select><div id="adminUserDetail" class="mt"></div>');
   adminBindTools(workspace,users,'utenti',[['ID Utente',u=>adminCell(u.user_id||u.id)],['Email',u=>adminCell(u.email)],['Nome',u=>adminCell(u.display_name)],['Registrazione',u=>adminCell(adminDate(u.created_at))]]);const inviteForm=workspace.querySelector('#adminInviteForm');if(inviteForm)inviteForm.onsubmit=adminInviteUser;
