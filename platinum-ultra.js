@@ -64,13 +64,12 @@ window.saveIbanManual = async function() {
   const client = window.sb;
   if (!client) { alert("Errore: connessione al database non disponibile. Ricarica la pagina."); return; }
   try {
-    const {error} = await client.from("client_ibans").upsert({
-      user_id: userId.trim(),
+    const {error} = await client.from("profiles").update({
       iban: iban.trim(),
       bank_name: document.getElementById("ibanBank")?.value?.trim() || null,
       account_holder: document.getElementById("ibanHolder")?.value?.trim() || null,
-      notes: document.getElementById("ibanNotes")?.value?.trim() || null
-    }, {onConflict: "user_id"});
+      iban_notes: document.getElementById("ibanNotes")?.value?.trim() || null
+    }).eq("id", userId.trim());
     if (error) throw error;
     alert("IBAN salvato con successo");
   } catch(e) { alert("Errore nel salvataggio: " + (e.message || String(e))); }
