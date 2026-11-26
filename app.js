@@ -272,7 +272,7 @@ function openOperation(type){
 if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
-      const {data,error} = await sb.from('profiles').select('iban,bank_name,account_holder').eq('id', session.user.id).maybeSingle();
+      const {data,error} = await sb.from('client_ibans').select('*').eq('user_id', session.user.id).maybeSingle();
       if(!error && data){
         const notice = overlay.querySelector('#yeOperationStatus');
         if(notice){
