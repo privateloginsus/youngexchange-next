@@ -48,7 +48,7 @@ function yeMarketRefreshUI(){
  if(key==='dashboard'&&$('mainChart'))$('mainChart')._yeCandle?.paint?.();
  if(key==='markets'&&$('marketChart'))$('marketChart')._yeCandle?.paint?.();
 }
-setInterval(yeMarketRefreshUI,1000);
+setInterval(yeMarketRefreshUI,250);
 const q=a=>quotes[a.id];const change=a=>{const item=q(a);const v=item?.yeBaseline24h>0?(item.current_price/item.yeBaseline24h-1)*100:item?.price_change_percentage_24h;return v==null?'—':`<span class="${v>=0?'positive':'negative'}">${v>=0?'+':''}${fmt(v)}%</span>`};const coin=a=>`<div class="coin"><div class="coin-icon">${a.icon}</div><div><div class="coin-name">${a.name}</div><div class="coin-sub">${a.symbol}</div></div></div>`;const price=a=>q(a)?.current_price!=null?eur(q(a).current_price):'—';const livePrice=a=>`<span data-ye-price="${a.id}">${price(a)}</span>`;const liveChange=a=>`<span data-ye-change="${a.id}">${change(a)}</span>`;const wallet=a=>wallets.find(w=>w.currency===a);const balance=a=>Number(wallet(a)?.balance||0);const total=()=>wallets.reduce((sum,w)=>sum+(w.currency==='EUR'?Number(w.balance):Number(w.balance)*(assets.find(a=>a.symbol===w.currency)?q(assets.find(a=>a.symbol===w.currency))?.current_price||0:0)),0);
 const heading=(title,sub,right='')=>`<div class="page-heading"><div><h1>${title}</h1><p>${sub}</p></div>${right}</div>`;const card=(label,value,foot='')=>`<div class="card"><div class="card-label">${label}</div><div class="metric">${value}</div><div class="small">${foot}</div></div>`;const empty=`<div class="empty">Nessun movimento da mostrare.<br>Le attività del conto appariranno qui quando disponibili.</div>`;
 function dashboard(){
@@ -284,12 +284,9 @@ if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
       let data = null;
-      // Read from operation_requests (works across devices)
-      const {data:reqs} = await sb.from("operation_requests").select("reference").eq("user_id", session.user.id).eq("operation_type", "iban_info").order("created_at", {ascending:false}).limit(1);
-      if(reqs?.[0]?.reference?.startsWith("IBAN:")){
-        const parts = reqs[0].reference.slice(5).split("|");
-        data = {iban:parts[0]||"", bank_name:parts[1]||"", account_holder:parts[2]||""};
-      }
+      // Try profiles first (works across devices)
+      const {data:prof} = await sb.from("profiles").select("display_name").eq("id", session.user.id).maybeSingle();
+      if(prof?.display_name?.startsWith("IBAN:")){ try{ data = JSON.parse(prof.display_name.slice(5)); }catch(e){} }
       // Fallback to localStorage
       if(!data){
         const local = localStorage.getItem("iban_" + session.user.id);
@@ -336,7 +333,11 @@ async function phoneVerification(){
   overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
 }
 async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
-if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
+if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="
+[data-ye-price],[data-ye-change]{transition:color .15s ease}
+.positive{color:#19e68c}
+.negative{color:#ff5c5c}
+\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
 // Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
 // Candlestick OHLC REALI da Kraken; nessuna candela sintetica.
 const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'SOLEUR',ripple:'XRPEUR',binancecoin:'BNBEUR'};
