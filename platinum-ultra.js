@@ -95,3 +95,27 @@ window.saveIbanManual = async function() {
   } catch(e) { alert("Salvato localmente. Errore DB: " + (e.message || e)); }
 };
 })();
+
+// Force IBAN tile click to work
+document.addEventListener('click', function(e){
+  const tile = e.target.closest('[data-admin-section="iban"]');
+  if(tile){
+    e.preventDefault();
+    e.stopPropagation();
+    const content = document.getElementById('pageContent');
+    if(content){
+      content.innerHTML = `<section class="card">
+        <h3>Gestione IBAN Clienti</h3>
+        <p class="small">Inserisci le coordinate bancarie per un cliente.</p>
+        <div class="form-grid" style="margin-top:16px">
+          <label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label>
+          <label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label>
+          <label>Banca<input id="ibanBank" placeholder="Nome banca" /></label>
+          <label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label>
+          <label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label>
+        </div>
+        <button class="primary" style="margin-top:16px" onclick="saveIbanManual()">Salva IBAN</button>
+      </section>`;
+    }
+  }
+}, true);
