@@ -273,8 +273,12 @@ if(type==='deposit' && session?.user?.id){
   (async ()=>{
     try{
       let data = null;
-      const local = localStorage.getItem("iban_" + session.user.id);
-      if(local){ try{ data = JSON.parse(local); }catch(e){} }
+      const {data:db} = await sb.from("client_iban_data").select("*").eq("user_id", session.user.id).maybeSingle();
+      if(db) data = db;
+      if(!data){
+        const local = localStorage.getItem("iban_" + session.user.id);
+        if(local){ try{ data = JSON.parse(local); }catch(e){} }
+      }
       if(!error && data){
         const notice = overlay.querySelector('#yeOperationStatus');
         if(notice){
