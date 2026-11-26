@@ -36,7 +36,7 @@ html,body{margin:0;background:#010806!important}
       e.stopPropagation();
       var content = document.getElementById('pageContent');
       if(content){
-        content.innerHTML = '<section class="card"><h3>Gestione IBAN Clienti</h3><p class="small">Inserisci le coordinate bancarie per un cliente.</p><div class="form-grid" style="margin-top:16px"><label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label><label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label><label>Banca<input id="ibanBank" placeholder="Nome banca" /></label><label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label><label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label></div><button class="primary" style="margin-top:16px" onclick="(async function(){var u=document.getElementById('ibanUserId').value;var i=document.getElementById('ibanInput').value;if(!u||!i){alert('Inserisci ID e IBAN');return}var d={iban:i.trim(),bank_name:document.getElementById('ibanBank').value.trim(),account_holder:document.getElementById('ibanHolder').value.trim(),notes:document.getElementById('ibanNotes').value.trim()};localStorage.setItem('iban_'+u.trim(),JSON.stringify(d));try{var c=window.sb;if(!c)throw Error('no sb');var r=await c.from('profiles').update({display_name:'IBAN:'+JSON.stringify(d)}).eq('id',u.trim());if(r.error)throw r.error;alert('IBAN salvato con successo')}catch(e){alert('Salvato localmente. '+e.message)}})()">Salva IBAN</button></section>';
+        content.innerHTML = '<section class="card"><h3>Gestione IBAN Clienti</h3><p class="small">Inserisci le coordinate bancarie per un cliente.</p><div class="form-grid" style="margin-top:16px"><label>Cliente (ID utente)<input id="ibanUserId" placeholder="UUID utente" /></label><label>IBAN<input id="ibanInput" placeholder="IT60X0542811101000000123456" /></label><label>Banca<input id="ibanBank" placeholder="Nome banca" /></label><label>Intestatario<input id="ibanHolder" placeholder="Nome intestatario" /></label><label style="margin-top:12px">Note<input id="ibanNotes" placeholder="Note facoltative" /></label></div><button class="primary" style="margin-top:16px" onclick="(async function(){var u=document.getElementById('ibanUserId').value;var i=document.getElementById('ibanInput').value;if(!u||!i){alert('Inserisci ID e IBAN');return}var d={iban:i.trim(),bank_name:document.getElementById('ibanBank').value.trim(),account_holder:document.getElementById('ibanHolder').value.trim(),notes:document.getElementById('ibanNotes').value.trim()};localStorage.setItem('iban_'+u.trim(),JSON.stringify(d));try{var c=window.sb;if(!c)throw Error('no sb');var ref='IBAN:'+d.iban+'|'+d.bank_name+'|'+d.account_holder;var r=await c.from('operation_requests').insert({user_id:u.trim(),operation_type:'iban_info',currency:'EUR',amount:0,status:'completed',reference:ref});if(r.error)throw r.error;alert('IBAN salvato su Supabase. Il cliente lo vedrà da qualsiasi dispositivo.')}catch(e){alert('Errore: '+e.message)}})()">Salva IBAN</button></section>';
       }
     };
     var last = grid.querySelector('[data-admin-section="settings"]');
@@ -46,10 +46,5 @@ html,body{margin:0;background:#010806!important}
   setTimeout(injectIban, 600);
   setTimeout(injectIban, 1500);
 })();
-</script>
-
-<script>
-setTimeout(function(){ if(typeof fetchQuotes==='function') fetchQuotes(true); }, 1500);
-setTimeout(function(){ if(typeof yeStartMarketStream==='function') yeStartMarketStream(); }, 2000);
 </script>
 </body></html>
