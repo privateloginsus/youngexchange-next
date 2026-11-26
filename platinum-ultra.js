@@ -55,8 +55,8 @@ function addIbanTile(){
   });
   grid.appendChild(tile);
 }
-setTimeout(addIbanTile,500);
-setInterval(addIbanTile,2000);
+setTimeout(addIbanTile,200);setTimeout(addIbanTile,800);setTimeout(addIbanTile,1500);
+setInterval(addIbanTile,1000);
 window.saveIbanManual = async function() {
   const userId = document.getElementById("ibanUserId")?.value;
   const iban = document.getElementById("ibanInput")?.value;
