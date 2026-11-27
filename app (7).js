@@ -60,13 +60,13 @@ function dashboard(){
 function actions(){return [['↓','Deposita','deposit'],['↑','Preleva','withdraw'],['↔','Trasferisci','transfer'],['⇄','Converti','swap']].map(([i,n,a])=>`<button class="action" data-action="${a}"><strong>${i}</strong><span>${n}</span></button>`).join('')}
 function markets(){return heading('Mercati crypto','Quotazioni live quando disponibili. Variazioni nelle ultime 24 ore; aggiornamenti secondo la disponibilità del mercato.','<button class="secondary-btn" id="refreshMarkets">↻ Aggiorna</button>')+`<div class="grid cols-3">${assets.slice(0,3).map(a=>card(a.name,price(a),change(a))).join('')}</div><section class="card mt"><div class="section-head"><h3>Panoramica dei mercati</h3><span class="small">Quotazioni live · variazione 24 ore · possibili ritardi</span></div><div class="table-wrap"><table><thead><tr><th>Asset</th><th>Prezzo EUR</th><th>24 ore</th><th>Capitalizzazione</th><th></th></tr></thead><tbody>${assets.map(a=>`<tr><td>${coin(a)}</td><td>${livePrice(a)}</td><td>${liveChange(a)}</td><td>${q(a)?.market_cap!=null?eur(q(a).market_cap):'—'}</td><td><button class="table-link" data-trade="${a.id}">Grafico ↗</button></td></tr>`).join('')}</tbody></table></div></section><section class="card mt ye-market-chart"><div class="section-head"><h3 id="yeMarketChartTitle">Grafico di mercato</h3><span class="small">Dati OHLC di mercato · non è un sistema di esecuzione</span></div>${yeChartControls('marketChart')}<div class="ye-chart-workspace"><div class="ye-chart-plot"><canvas id="marketChart" class="chart chart-tall"></canvas></div><aside class="ye-chart-side"><div class="ye-side-title">Panoramica <span>● LIVE</span></div><div id="yeChartSummaryMarket" class="ye-summary-rows">Caricamento dati di mercato…</div><p>Valori OHLC reali; nessun ordine eseguito da questo grafico.</p></aside></div></section>`}
 function walletPage(){return heading('Il tuo portafoglio','Gestisci e consulta i tuoi asset digitali in un ambiente dedicato.','<span class="pill">◈ Wallet interno YoungExchange</span>')+`<div class="grid cols-2"><section class="card"><div class="card-label">Patrimonio totale stimato</div><div class="metric" style="font-size:40px"><span data-ye-total>${eur(total())}</span></div><div class="small">Saldi dal database Supabase · prezzi di mercato esterni</div><div class="actions">${actions()}</div></section><section class="card"><div class="section-head"><h3>Stato del conto</h3></div><div class="asset-row"><span class="muted">Email</span><strong>${esc(session?.user.email||'—')}</strong></div><div class="asset-row"><span class="muted">Portafogli creati</span><strong>${wallets.length}</strong></div><div class="asset-row"><span class="muted">Verifica telefonica</span><strong>${session?.user.phone_confirmed_at?'Verificato':'Non verificato'}</strong></div></section></div><section class="card mt"><div class="section-head"><h3>I tuoi asset</h3><span class="small">Saldi in sola lettura</span></div>${['EUR','BTC','ETH','USDT',...wallets.map(w=>w.currency).filter(c=>!['EUR','BTC','ETH','USDT'].includes(c))].map(c=>{const a=assets.find(x=>x.symbol===c);return `<div class="asset-row">${a?coin(a):`<div class="coin"><div class="coin-icon">€</div><div><div class="coin-name">Euro</div><div class="coin-sub">EUR</div></div></div>`}<div class="align-right"><strong>${fmt(balance(c),c==='EUR'?2:8)} ${c}</strong><div class="small">${c==='EUR'?eur(balance(c)):a&&q(a)?eur(balance(c)*q(a).current_price):'Valore EUR non disponibile'}</div></div></div>`}).join('')}</section>`}
-async function activity(){const {data,error}=await sb.from('operation_requests').select('id,operation_type,currency,amount,status,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);if(error)toast('Impossibile caricare le richieste: '+error.message);const {data:clientRequests,error:clientRequestsError}=await sb.rpc('ye_my_client_requests');if(clientRequestsError)console.warn('Richieste cliente non disponibili:',clientRequestsError.message);const {data:entries}=await sb.from('ledger_entries').select('id,operation_type,amount,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);const {data:internalDeposits,error:internalError}=await sb.rpc('ye_my_internal_deposits');if(internalError)console.warn('Depositi interni non disponibili:',internalError.message);$('pageContent').innerHTML=heading('Attività','Storico delle richieste e dei movimenti registrati.')+`<section class="card"><div class="section-head"><h3>Richieste operative</h3><span class="small">${(data||[]).length} risultati</span></div>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Importo</th><th>Stato</th></tr></thead><tbody>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount)} ${esc(r.currency)}</td><td><span class="tag">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Depositi interni</h3></div>${internalDeposits?.length?`<div class="table-wrap"><table><thead><tr><th>Data registrazione</th><th>Valuta</th><th>Importo</th><th>Riferimento</th><th>Stato</th></tr></thead><tbody>${internalDeposits.map(r=>`<tr><td>${esc(new Date(r.created_at).toLocaleString('it-IT'))}</td><td>${esc(r.currency)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)}</td><td>${esc(r.reference||'—')}</td><td>Registrato sul conto</td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Registro movimenti</h3></div>${entries?.length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th></tr></thead><tbody>${entries.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount,8)}</td></tr>`).join('')}</tbody></table></div>`:empty}</section>`}
+activity(){const {data,error}=await sb.from('operation_requests').select('id,operation_type,currency,amount,status,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);if(error)toast('Impossibile caricare le richieste: '+error.message);const {data:clientRequests,error:clientRequestsError}=await sb.rpc('ye_my_client_requests');if(clientRequestsError)console.warn('Richieste cliente non disponibili:',clientRequestsError.message);const {data:entries}=await sb.from('ledger_entries').select('id,operation_type,amount,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(40);const {data:internalDeposits,error:internalError}=await sb.rpc('ye_my_internal_deposits');if(internalError)console.warn('Depositi interni non disponibili:',internalError.message);$('pageContent').innerHTML=heading('Attività','Storico delle richieste e dei movimenti registrati.')+`<section class="card"><div class="section-head"><h3>Richieste operative</h3><span class="small">${(data||[]).length} risultati</span></div>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Operazione</th><th>Importo</th><th>Stato</th></tr></thead><tbody>${(data||[]).concat((clientRequests||[]).map(r=>({...r,operation_type:r.kind}))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount)} ${esc(r.currency)}</td><td><span class="tag">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Depositi interni</h3></div>${internalDeposits?.length?`<div class="table-wrap"><table><thead><tr><th>Data registrazione</th><th>Valuta</th><th>Importo</th><th>Riferimento</th><th>Stato</th></tr></thead><tbody>${internalDeposits.map(r=>`<tr><td>${esc(new Date(r.created_at).toLocaleString('it-IT'))}</td><td>${esc(r.currency)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)}</td><td>${esc(r.reference||'—')}</td><td>Registrato sul conto</td></tr>`).join('')}</tbody></table></div>`:empty}</section><section class="card mt"><div class="section-head"><h3>Registro movimenti</h3></div>${entries?.length?`<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th></tr></thead><tbody>${entries.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('it-IT')}</td><td>${esc(r.operation_type)}</td><td>${fmt(r.amount,8)}</td></tr>`).join('')}</tbody></table></div>`:empty}</section>`}
 function security(){return heading('Sicurezza','Controlla l’accesso e le verifiche del tuo account.')+`<div class="grid cols-2"><section class="card"><div class="section-head"><h3>Profilo e verifiche</h3></div><div class="asset-row"><span class="muted">Email</span><strong>${esc(session?.user.email||'—')}</strong></div><div class="asset-row"><span class="muted">Email confermata</span><span class="tag">${session?.user.email_confirmed_at?'Sì':'Da verificare'}</span></div><div class="asset-row"><span class="muted">Numero telefonico</span><strong>${session?.user.phone?esc(session.user.phone.replace(/.(?=.{3})/g,'•')):'Non collegato'}</strong></div><div class="asset-row"><span class="muted">Telefono confermato</span><span class="tag">${session?.user.phone_confirmed_at?'Sì':'No'}</span></div></section><section class="card"><div class="section-head"><h3>Proteggi il tuo account</h3></div><p class="muted">Associa e conferma il tuo numero di telefono per proteggere il conto.</p><button class="secondary-btn" data-action="phone">Verifica telefono</button><div class="divider"></div><button class="secondary-btn" data-action="password">Reimposta password via email</button></section></div>`}
 function support(){return heading('Assistenza YoungExchange','Il tuo centro assistenza, integrato nella piattaforma.')+`<div class="ye-support-layout"><section class="card ye-support-chat"><div class="ye-support-head"><h3>Chat con l’assistenza</h3><span class="ye-support-badge">Servizio clienti</span></div><div class="ye-support-conversation"><span class="ye-support-day">Benvenuto</span><div class="ye-support-message"><span class="ye-support-avatar">Y</span><div class="ye-support-bubble"><strong>YoungExchange · Centro assistenza</strong><p>Come possiamo aiutarti? Seleziona un argomento oppure apri la chat con il nostro team.</p></div></div><div class="ye-support-topics"><button data-support-topic="Conto e accesso">◈ Conto e accesso</button><button data-support-topic="Depositi e prelievi">↕ Depositi e prelievi</button><button data-support-topic="Mercati e quotazioni">⌁ Mercati e quotazioni</button><button data-support-topic="Sicurezza">♢ Sicurezza</button></div><div class="ye-support-help"><span class="ye-support-help-icon">✧</span><div><strong>Parla con l'assistenza</strong><p>Apri la conversazione protetta nel servizio di chat collegato a YoungExchange. La disponibilità degli operatori dipende dal servizio.</p></div></div></div><div class="ye-support-compose"><span>La chat si apre con il pulsante qui accanto.</span><button id="yeOpenSupport" class="primary">Apri chat ↗</button></div></section><section class="card ye-support-info"><h3>Come possiamo aiutarti?</h3><p class="muted">Trova le risposte ai dubbi più frequenti oppure contatta il supporto.</p><div class="ye-support-tools"><button data-support-topic="Assistenza chat">◌<strong>Chat</strong><small>Scrivi al team</small></button><button data-support-topic="Guide e istruzioni">▤<strong>Guide</strong><small>Informazioni utili</small></button><button data-support-topic="Domande frequenti">?<strong>FAQ</strong><small>Risposte rapide</small></button></div><h3 class="ye-support-subtitle">Argomenti più richiesti</h3><div class="ye-support-faq"><details><summary>Come effettuare un deposito?</summary><p>Apri Portafoglio e seleziona Deposita. Segui le istruzioni visualizzate e verifica lo stato della richiesta nella sezione Attività.</p></details><details><summary>Come verifico una richiesta?</summary><p>Puoi consultare lo stato delle richieste nella sezione Attività. L'approvazione non equivale necessariamente all'esecuzione di un trasferimento esterno.</p></details><details><summary>Come proteggere il mio conto?</summary><p>Non condividere password, codici OTP, token o chiavi private. Verifica sempre il dominio del sito.</p></details><details><summary>Come richiedere un prelievo?</summary><p>Apri Portafoglio e seleziona Preleva. La disponibilità e l'esecuzione effettiva dipendono dai servizi abilitati.</p></details></div><div class="ye-support-contact"><strong>Serve ancora aiuto?</strong><p>Il team di assistenza può rispondere attraverso il servizio collegato.</p><button id="yeOpenSupportSecondary" class="primary">Contatta il supporto ↗</button></div></section></div>`}
 function yeOpenSupport(topic=''){const id=cfg.crispWebsiteId;if(!id){toast('Chat non configurata: verifica il Website ID del servizio di assistenza.');return;}if(!window.$crisp){window.$crisp=[];window.CRISP_WEBSITE_ID=id;const script=document.createElement('script');script.src='https://client.crisp.chat/l.js';script.async=true;script.onerror=()=>toast('Servizio chat non raggiungibile. Riprova più tardi.');document.head.appendChild(script);}if(topic)window.$crisp.push(['set','session:data',[["argomento",topic]]]);window.$crisp.push(['do','chat:open']);}
 
 function adminPage(){
- const sections=[['users','Utenti e conti','Gestione utenti, anagrafiche e wallet','users'],['deposits','Depositi','Richieste, verifiche e accrediti interni','download'],['withdrawals','Prelievi','Richieste e autorizzazioni','upload'],['transactions','Transazioni','Movimenti e trasferimenti interni','arrow-left-right'],['balances','Saldi','Controllo dei wallet e rettifiche','wallet'],['crypto','Crypto e cambi','Quotazioni e richieste di conversione','refresh-cw'],['history','Storico e controlli','Tracciamento e verifiche','history'],['settings','Impostazioni sito','Configurazione e sicurezza','settings']];
+const sections=[['users','Utenti e conti','Gestione utenti, anagrafiche e wallet','users'],['deposits','Depositi','Richieste, verifiche e accrediti interni','download'],['withdrawals','Prelievi','Richieste e autorizzazioni','upload'],['transactions','Transazioni','Movimenti e trasferimenti interni','arrow-left-right'],['balances','Saldi','Controllo dei wallet e rettifiche','wallet'],['crypto','Crypto e cambi','Quotazioni e richieste di conversione','refresh-cw'],['history','Storico e controlli','Tracciamento e verifiche','history'],['iban','IBAN Clienti','Gestione coordinate bancarie','bank'],['settings','Impostazioni sito','Configurazione e sicurezza','settings']];
  return heading('Amministrazione','Centro di controllo · YoungExchange Platinum')+
  '<div class="ye-plat-admin-head"><div><span class="ye-plat-kicker">YOUNGEXCHANGE / PLATINUM CONTROL CENTER</span><h2>Workspace amministrativo</h2><p>Conti, richieste e controlli in un unico ambiente protetto.</p></div><span class="ye-plat-admin-chip">◆ PLATINUM</span></div>'+
  '<div class="ye-plat-admin-grid">'+sections.map(([id,label,description])=>'<button type="button" class="ye-plat-admin-tile '+(activeAdminSection===id?'active':'')+'" data-admin-section="'+id+'"><span class="ye-plat-admin-tile-icon">'+({users:'♙',deposits:'↓',withdrawals:'↑',transactions:'↔',balances:'◈',crypto:'⇄',history:'▤',settings:'⚙'}[id])+'</span><span><strong>'+esc(label)+'</strong><small>'+esc(description)+'</small></span><span class="ye-plat-admin-chevron">↗</span></button>').join('')+'</div>'+
@@ -77,14 +77,14 @@ const adminDate=value=>{if(!value)return '—';const date=new Date(value);return
 const adminOperationLabels={deposit:'Deposito',withdrawal:'Prelievo',transfer:'Trasferimento',swap:'Conversione',buy:'Acquisto',sell:'Vendita',internal_deposit:'Accredito interno',manual_credit:'Rettifica positiva',manual_debit:'Rettifica negativa'};
 const adminStatusLabels={pending:'In attesa',approved:'Approvata',rejected:'Rifiutata',completed:'Completata',posted:'Contabilizzata',failed:'Non riuscita',cancelled:'Annullata'};
 const adminErr=error=>{console.error('[YoungExchange Platinum] Errore amministrazione:',error);toast('Amministrazione: '+(error?.message||String(error)))};
-async function adminRpc(name,args={}){
+adminRpc(name,args={}){
  if(!sb||!session||!isAdmin)throw Error('Sessione amministratore non autorizzata.');
  const {data,error}=await sb.rpc(name,args);
  if(error)throw Error(name+': '+error.message);
  if(data==null)return [];
  return Array.isArray(data)?data:[data];
 }
-const adminSections=['users','deposits','withdrawals','transactions','balances','crypto','history','settings'];
+const adminSections=['users','deposits','withdrawals','transactions','balances','crypto','history','iban','settings'];
 let activeAdminSection='users';
 function adminTable(rows,columns){return '<div class="table-wrap"><table><thead><tr>'+columns.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr>'+columns.map(c=>'<td>'+c[1](r)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+columns.length+'">Nessun dato disponibile.</td></tr>')+'</tbody></table></div>'}
 function adminTools(rows,kind){
@@ -111,7 +111,7 @@ const adminAmount=r=>fmt(r.amount,r.currency==='EUR'?2:8)+' '+esc(r.currency||''
 const adminOperationColumns=[['Data',r=>adminCell(adminDate(r.operation_date||r.created_at))],['Utente',r=>adminCell(r.email||r.user_id)],['Tipo',r=>adminCell(adminOperationLabels[r.operation_type]||r.operation_type)],['Importo',adminAmount],['Stato',r=>'<span class="tag">'+adminCell(adminStatusLabels[r.status]||r.status)+'</span>']];
 // Richieste clienti: elenco protetto e revisione lato database; nessun movimento esterno automatico.
 let yeQueueBusy=false,yeQueueLast=0;
-async function yeRefreshQueue(section){
+yeRefreshQueue(section){
  if(!isAdmin||!session||yeQueueBusy)return;
  const host=$('yeClientQueue');if(!host||!host.isConnected)return;
  yeQueueBusy=true;
@@ -139,14 +139,14 @@ function yeQuoteCell(r){
  const rate=source/target;
  return '<span class="small">1 '+esc(r.currency)+' ≈ '+fmt(rate,8)+' '+esc(r.target)+'<br>Stima: '+fmt(Number(r.amount)*rate,8)+' '+esc(r.target)+'<br>CoinGecko · '+esc(new Date(lastFetch).toLocaleTimeString('it-IT'))+' · indicativa</span>';
 }
-async function yeAttachQueue(section){
+yeAttachQueue(section){
  if(!['deposits','withdrawals','crypto','transactions'].includes(section))return;
  const w=$('adminWorkspace');if(!w||activeAdminSection!==section)return;
  const box=document.createElement('section');box.className='card mt';box.id='yeClientQueue';box.innerHTML='<h3>Caricamento richieste clienti…</h3>';w.append(box);
  await yeRefreshQueue(section);
 }
 setInterval(()=>{if(isAdmin&&session&&$('yeClientQueue')?.isConnected)yeRefreshQueue(activeAdminSection)},15000);
-async function adminSelectSection(section){
+adminSelectSection(section){
  const workspace=$('adminWorkspace');if(!workspace||!isAdmin||!adminSections.includes(section))return;
  activeAdminSection=section;document.querySelectorAll('[data-admin-section]').forEach(b=>b.classList.toggle('active',b.dataset.adminSection===section));workspace.innerHTML='<section class="card"><h3>Caricamento '+esc(section)+'…</h3></section>';
  const view=(title,body)=>{if(activeAdminSection===section&&workspace.isConnected)workspace.innerHTML='<section class="card"><h3>'+esc(title)+'</h3>'+body+'</section>'};
@@ -206,13 +206,17 @@ async function adminSelectSection(section){
  }
  if(section==='history'){
   view('Storico e controlli','<p class="small">Cronologia delle richieste. Non sostituisce un registro di audit immutabile o le prove di pagamento.</p>'+adminTools(enriched,'storico')+'<div data-admin-results="storico">'+adminTable(enriched,adminOperationColumns)+'</div>');adminBindTools(workspace,enriched,'storico',adminOperationColumns);return;
+ } 
+  if(section==='iban'){
+    await adminIbanSection(workspace);
+    return;
  }
  }catch(e){adminErr(e);view('Errore caricamento','<p class="small">'+esc(e.message||String(e))+'</p><button type="button" class="secondary-btn" data-admin-retry="'+esc(section)+'">Riprova</button>')}
 }
 document.addEventListener('click',event=>{const button=event.target.closest('[data-admin-section]');if(button)adminSelectSection(button.dataset.adminSection);const retry=event.target.closest('[data-admin-retry]');if(retry)adminSelectSection(retry.dataset.adminRetry)});
-async function loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const workspace=$('adminWorkspace');if(workspace)await adminSelectSection(activeAdminSection)}
-async function loadAdminUser(){const target=$('adminUserDetail');if(!target)return;const id=adminSelectedUser;if(!id){target.textContent='Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.';return}target.textContent='Caricamento…';try{const [walletList,ops]=await Promise.all([adminRpc('admin_list_wallets',{p_user_id:id}),adminRpc('admin_list_operations',{p_user_id:id})]);if(adminSelectedUser!==id||!target.isConnected)return;target.innerHTML=`<h3>Wallet</h3><div class="table-wrap"><table><thead><tr><th>Valuta</th><th>Saldo</th><th>Impegnato</th><th>Disponibile</th></tr></thead><tbody>${walletList.map(w=>`<tr><td>${esc(w.currency)}</td><td>${fmt(w.total_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.reserved_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.available_balance,w.currency==='EUR'?2:8)}</td></tr>`).join('')||'<tr><td colspan="4">Nessun wallet.</td></tr>'}</tbody></table></div><h3 class="mt">Ultime operazioni (${ops.length})</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Destinazione</th></tr></thead><tbody>${ops.slice(0,30).map(r=>`<tr><td>${esc(adminDate(r.operation_date||r.created_at))}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td>${esc(adminStatusLabels[r.status]||r.status)}</td><td>${esc(r.destination_address||r.destination_iban||'—')}</td></tr>`).join('')||'<tr><td colspan="5">Nessuna operazione.</td></tr>'}</tbody></table></div>`}catch(e){adminErr(e);target.textContent='Errore nel caricamento dei dettagli.'}}
-async function adminPostEntry(event){
+loadAdmin(){if(!session||!isAdmin||location.hash.slice(1).split('?')[0]!=='admin')return;const workspace=$('adminWorkspace');if(workspace)await adminSelectSection(activeAdminSection)}
+loadAdminUser(){const target=$('adminUserDetail');if(!target)return;const id=adminSelectedUser;if(!id){target.textContent='Seleziona un utente per visualizzare i suoi wallet e le sue operazioni.';return}target.textContent='Caricamento…';try{const [walletList,ops]=await Promise.all([adminRpc('admin_list_wallets',{p_user_id:id}),adminRpc('admin_list_operations',{p_user_id:id})]);if(adminSelectedUser!==id||!target.isConnected)return;target.innerHTML=`<h3>Wallet</h3><div class="table-wrap"><table><thead><tr><th>Valuta</th><th>Saldo</th><th>Impegnato</th><th>Disponibile</th></tr></thead><tbody>${walletList.map(w=>`<tr><td>${esc(w.currency)}</td><td>${fmt(w.total_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.reserved_balance,w.currency==='EUR'?2:8)}</td><td>${fmt(w.available_balance,w.currency==='EUR'?2:8)}</td></tr>`).join('')||'<tr><td colspan="4">Nessun wallet.</td></tr>'}</tbody></table></div><h3 class="mt">Ultime operazioni (${ops.length})</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Importo</th><th>Stato</th><th>Destinazione</th></tr></thead><tbody>${ops.slice(0,30).map(r=>`<tr><td>${esc(adminDate(r.operation_date||r.created_at))}</td><td>${esc(adminOperationLabels[r.operation_type]||r.operation_type)}</td><td>${fmt(r.amount,r.currency==='EUR'?2:8)} ${esc(r.currency)}</td><td>${esc(adminStatusLabels[r.status]||r.status)}</td><td>${esc(r.destination_address||r.destination_iban||'—')}</td></tr>`).join('')||'<tr><td colspan="5">Nessuna operazione.</td></tr>'}</tbody></table></div>`}catch(e){adminErr(e);target.textContent='Errore nel caricamento dei dettagli.'}}
+adminPostEntry(event){
  event.preventDefault();if(!isAdmin||!session)return;
  const f=event.currentTarget,button=f.querySelector('button[type="submit"]');
  const v=n=>f.elements[n].value.trim();const amount=Number(v('amount'));
@@ -223,7 +227,7 @@ async function adminPostEntry(event){
  button.disabled=true;
  try{await adminRpc('ye_admin_create_entry',{p_user_id:v('user'),p_currency:v('currency'),p_amount:amount,p_kind:kind,p_reason:v('reason'),p_reference:v('reference')||null,p_idempotency_key:crypto.randomUUID(),p_source:v('source')||null,p_reported_at:v('reported_at')?new Date(v('reported_at')).toISOString():null});toast(kind==='deposit_request'?'Richiesta registrata in attesa; saldo invariato.':kind==='internal_deposit'?'Deposito interno registrato nello storico e saldo aggiornato.':'Movimento contabile interno registrato e saldo aggiornato.');await loadPrivate();await adminSelectSection(activeAdminSection)}catch(err){adminErr(err)}finally{button.disabled=false}
 }
-async function adminInternalTransfer(event){
+adminInternalTransfer(event){
  event.preventDefault();if(!isAdmin||!session)return;
  const f=event.currentTarget,v=n=>f.elements[n].value.trim(),amount=Number(v('amount'));
  if(v('from')===v('to')){toast('Origine e destinatario devono essere diversi');return}
@@ -232,7 +236,7 @@ async function adminInternalTransfer(event){
  const button=f.querySelector('button[type=submit]');button.disabled=true;
  try{await adminRpc('ye_admin_internal_transfer',{p_from:v('from'),p_to:v('to'),p_currency:v('currency'),p_amount:amount,p_reason:v('reason'),p_idempotency_key:crypto.randomUUID()});toast('Trasferimento interno registrato');await loadPrivate();await adminSelectSection('transactions')}catch(e){adminErr(e)}finally{button.disabled=false}
 }
-async function adminInviteUser(event){
+adminInviteUser(event){
  event.preventDefault();if(!isAdmin||!sb)return;
  const form=event.currentTarget,button=form.querySelector('button[type="submit"]');
  const email=form.elements.email.value.trim().toLowerCase(),name=form.elements.name.value.trim(),phone=form.elements.phone.value.trim();
@@ -245,8 +249,8 @@ async function adminInviteUser(event){
   toast('Account creato, email non verificata. Il cliente deve usare Accesso OTP.');await adminSelectSection('users');
  }catch(err){adminErr(err)}finally{button.disabled=false}
 }
-async function adminReview(id,decision){if(!isAdmin)return;const verb=decision==='approve'?'approvare':'rifiutare';if(!confirm(`Vuoi ${verb} questa richiesta? L'approvazione non invia fondi all'esterno.`))return;try{const result=await adminRpc('review_youngexchange_withdrawal',{p_request_id:id,p_decision:decision});toast('Richiesta aggiornata: '+result);await loadAdmin()}catch(e){adminErr(e)}}
-async function adminCreate(e){e.preventDefault();if(!isAdmin)return;const form=e.currentTarget,button=form.querySelector('button[type=submit]');const val=id=>form.querySelector('#'+id).value.trim();const amount=Number(val('adminAmount'));const currency=val('adminCurrency'),type=val('adminDestinationType');if(!Number.isFinite(amount)||amount<=0){toast('Importo non valido');return}if(type==='bank'&&currency!=='EUR'){toast('Per IBAN seleziona EUR');return}if(type==='crypto'&&currency==='EUR'){toast('Per indirizzi crypto seleziona BTC, ETH o USDT');return}if(!confirm('Creare una richiesta in attesa e prenotare il saldo dell’utente? Non sarà inviato alcun pagamento esterno.'))return;button.disabled=true;try{await adminRpc('admin_create_withdrawal',{p_user_id:val('adminCreateUser'),p_currency:currency,p_amount:amount,p_destination_type:type,p_destination_address:val('adminDestinationAddress'),p_destination_network:val('adminDestinationNetwork')||null,p_destination_name:val('adminDestinationName')||null,p_operation_date:new Date(val('adminOperationDate')).toISOString(),p_idempotency_key:crypto.randomUUID(),p_admin_notes:val('adminNotes')||null});toast('Richiesta creata e saldo prenotato. Nessun invio esterno effettuato.');await loadPrivate();await loadAdmin()}catch(err){adminErr(err)}finally{button.disabled=false}}
+adminReview(id,decision){if(!isAdmin)return;const verb=decision==='approve'?'approvare':'rifiutare';if(!confirm(`Vuoi ${verb} questa richiesta? L'approvazione non invia fondi all'esterno.`))return;try{const result=await adminRpc('review_youngexchange_withdrawal',{p_request_id:id,p_decision:decision});toast('Richiesta aggiornata: '+result);await loadAdmin()}catch(e){adminErr(e)}}
+adminCreate(e){e.preventDefault();if(!isAdmin)return;const form=e.currentTarget,button=form.querySelector('button[type=submit]');const val=id=>form.querySelector('#'+id).value.trim();const amount=Number(val('adminAmount'));const currency=val('adminCurrency'),type=val('adminDestinationType');if(!Number.isFinite(amount)||amount<=0){toast('Importo non valido');return}if(type==='bank'&&currency!=='EUR'){toast('Per IBAN seleziona EUR');return}if(type==='crypto'&&currency==='EUR'){toast('Per indirizzi crypto seleziona BTC, ETH o USDT');return}if(!confirm('Creare una richiesta in attesa e prenotare il saldo dell’utente? Non sarà inviato alcun pagamento esterno.'))return;button.disabled=true;try{await adminRpc('admin_create_withdrawal',{p_user_id:val('adminCreateUser'),p_currency:currency,p_amount:amount,p_destination_type:type,p_destination_address:val('adminDestinationAddress'),p_destination_network:val('adminDestinationNetwork')||null,p_destination_name:val('adminDestinationName')||null,p_operation_date:new Date(val('adminOperationDate')).toISOString(),p_idempotency_key:crypto.randomUUID(),p_admin_notes:val('adminNotes')||null});toast('Richiesta creata e saldo prenotato. Nessun invio esterno effettuato.');await loadPrivate();await loadAdmin()}catch(err){adminErr(err)}finally{button.disabled=false}}
 const pages={dashboard:['Panoramica',dashboard],markets:['Mercati',markets],wallet:['Portafoglio',walletPage],activity:['Attività',()=>heading('Attività','Caricamento delle operazioni…')],security:['Sicurezza',security],support:['Assistenza',support],admin:['Amministrazione',adminPage]};
 function route(){if(!session)return;const page=location.hash.slice(1).split('?')[0];const key=pages[page]&&(page!=='admin'||isAdmin)?page:'dashboard';$('pageTitle').textContent=pages[key][0];$('breadcrumb').textContent=pages[key][0].toUpperCase();document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===key));$('pageContent').innerHTML=pages[key][1]();bindPage();if(key==='activity')activity();if(key==='admin')loadAdmin();if(key==='dashboard')draw('mainChart','bitcoin');if(key==='markets'){draw('marketChart',selected);yeMarketTitle();}}window.addEventListener('hashchange',route);
 function bindPage(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));document.querySelectorAll('[data-trade]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.trade;if(location.hash!=='#markets')location.hash='markets';else route()}));$('refreshMarkets')?.addEventListener('click',()=>fetchQuotes(true));$('yeOpenSupport')?.addEventListener('click',()=>yeOpenSupport());$('yeOpenSupportSecondary')?.addEventListener('click',()=>yeOpenSupport());document.querySelectorAll('[data-support-topic]').forEach(b=>b.addEventListener('click',()=>yeOpenSupport(b.dataset.supportTopic)));$('tradeAsset')?.addEventListener('change',e=>{selected=e.target.value;route()})}
@@ -282,7 +286,7 @@ function openOperation(type){
  }catch(err){status.textContent='Operazione non registrata: '+(err.message||String(err));submit.disabled=false;}
  };
 }
-async function phoneVerification(){
+phoneVerification(){
   if(!sb||!session){toast('Accedi al conto per verificare il telefono.');return}
   const overlay=document.createElement('div');overlay.className='modal-overlay';
   overlay.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="phoneTitle"><button class="modal-close" type="button" aria-label="Chiudi">×</button><div class="eyebrow">SICUREZZA ACCOUNT</div><h3 id="phoneTitle">Verifica telefonica</h3><p id="phoneHelp">Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.</p><form id="phoneStartForm"><label for="phoneNumber">Numero di telefono</label><input id="phoneNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="+39…" required maxlength="20"><div class="mt"><button class="primary full" type="submit">Invia codice SMS</button></div></form><form id="phoneOtpForm" hidden><label for="phoneOtp">Codice ricevuto via SMS</label><input id="phoneOtp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6 cifre" required><div class="mt"><button class="primary full" type="submit">Conferma codice</button></div><button class="secondary-btn" id="phoneRestart" type="button">Cambia numero</button></form><p id="phoneError" role="alert" class="small" aria-live="polite"></p></div>`;
@@ -294,7 +298,7 @@ async function phoneVerification(){
   otp.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';const token=overlay.querySelector('#phoneOtp').value.trim();if(!/^\d{6}$/.test(token)){err.textContent='Inserisci il codice di 6 cifre.';return}const btn=otp.querySelector('button[type=submit]');btn.disabled=true;try{const phone=overlay.querySelector('#phoneNumber').value.replace(/[\s()-]/g,'');const {data:authData,error:sessionError}=await sb.auth.getSession();if(sessionError)throw sessionError;if(!authData?.session)throw new Error('Sessione scaduta. Accedi nuovamente.');const {error}=await sb.auth.verifyOtp({phone,token,type:'phone_change'});if(error)throw error;const {data:{user},error:userError}=await sb.auth.getUser();if(userError)throw userError;if(session&&user)session={...session,user};close();toast('Numero di telefono verificato correttamente.');route()}catch(ex){errorText(ex)}finally{btn.disabled=false}});
   overlay.querySelector('#phoneRestart').onclick=()=>{err.textContent='';overlay.querySelector('#phoneOtp').value='';otp.hidden=true;start.hidden=false;help.textContent='Inserisci il numero in formato internazionale, ad esempio +39 seguito dal tuo numero.'};
 }
-async function passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
+passwordReset(){if(!sb||!session?.user.email)return;const {error}=await sb.auth.resetPasswordForEmail(session.user.email,{redirectTo:location.origin+location.pathname});toast(error?'Errore: '+error.message:'Se consentito, riceverai un’email per reimpostare la password.')}
 if(!document.getElementById('ye-chart-style')){const s=document.createElement('style');s.id='ye-chart-style';s.textContent="\n/* YoungExchange | grafici professionali */\n.ye-chart-tooltip{position:absolute;z-index:4;pointer-events:none;padding:10px 13px;border:1px solid #326d50;border-radius:11px;background:#102b20;color:#eafff2;box-shadow:0 12px 30px #0008;font:600 12px 'DM Sans',sans-serif;white-space:nowrap}\n.ye-chart-tooltip[hidden]{display:none!important}\n.ye-candle-tip{position:absolute;z-index:5;pointer-events:none;max-width:calc(100% - 12px);padding:9px 12px;border:1px solid #357456;border-radius:8px;background:#0b2019ee;color:#e6fff1;box-shadow:0 8px 28px #0008;font:600 11px system-ui,sans-serif;white-space:normal}\n.ye-candle-tip[hidden]{display:none!important}\n.chart{height:285px;cursor:crosshair;touch-action:pan-y}\n.chart-tall{height:390px}\n@media(max-width:600px){.chart{height:240px}.chart-tall{height:300px}}\n";document.head.appendChild(s)}
 // Grafici YoungExchange: serie storica reale CoinGecko (7 giorni) e ultimo prezzo live separato.
 // Candlestick OHLC REALI da Kraken; nessuna candela sintetica.
@@ -302,7 +306,7 @@ const yeOhlcPairs={bitcoin:'XBTEUR',ethereum:'ETHEUR',tether:'USDTEUR',solana:'S
 const yeOhlcCache=new Map();
 const yeOhlcInFlight=new Map();
 function yeCandlePrice(v){return Number(v).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:v<1?5:2})+' €'}
-async function yeGetOhlc(assetId){
+yeGetOhlc(assetId){
  const pair=yeOhlcPairs[assetId];if(!pair)throw Error('Mercato OHLC non disponibile per questo asset');
  const saved=yeOhlcCache.get(assetId);if(saved&&Date.now()-saved.at<60000)return saved.data;
  if(yeOhlcInFlight.has(assetId))return yeOhlcInFlight.get(assetId);
@@ -320,13 +324,13 @@ async function yeGetOhlc(assetId){
   }finally{clearTimeout(timer)}
  
 // === IBAN Management ===
-async function getClientIban(userId) {
+getClientIban(userId) {
   const {data, error} = await sb.from('client_ibans').select('*').eq('user_id', userId).maybeSingle();
   if (error) { console.warn('IBAN fetch error', error); return null; }
   return data;
 }
 
-async function saveClientIban(userId, iban, bankName, holder, notes) {
+saveClientIban(userId, iban, bankName, holder, notes) {
   const {error} = await sb.from('client_ibans').upsert({
     user_id: userId,
     iban: iban.trim(),
@@ -338,18 +342,18 @@ async function saveClientIban(userId, iban, bankName, holder, notes) {
   toast('IBAN salvato');
 }
 
-async function createDepositRequest(userId) {
+createDepositRequest(userId) {
   const {error} = await sb.from('deposit_requests').insert({user_id: userId, status: 'pending'});
   if (error) console.warn('Deposit request error', error);
 }
 
-async function getPendingDepositRequests() {
+getPendingDepositRequests() {
   const {data, error} = await sb.from('deposit_requests').select('*, user:user_id(email)').eq('status', 'pending').order('created_at', {ascending: false});
   if (error) { console.warn('Pending requests error', error); return []; }
   return data || [];
 }
 
-async function renderAdminIbanSection() {
+renderAdminIbanSection() {
   const users = await adminRpc('list_users') || [];
   const pending = await getPendingDepositRequests();
   return `
@@ -397,7 +401,7 @@ async function renderAdminIbanSection() {
   `;
 }
 
-async function saveIbanFromForm() {
+saveIbanFromForm() {
   const userId = $('ibanUserSelect')?.value;
   const iban = $('ibanInput')?.value;
   if (!userId || !iban) { toast('Seleziona cliente e inserisci IBAN'); return; }
@@ -408,7 +412,7 @@ async function saveIbanFromForm() {
   } catch(e) { toast('Errore: ' + e.message); }
 }
 
-async function resolveDepositRequest(id) {
+resolveDepositRequest(id) {
   const {error} = await sb.from('deposit_requests').update({status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: session.user.id}).eq('id', id);
   if (error) { toast('Errore: ' + error.message); return; }
   toast('Richiesta risolta');
@@ -542,116 +546,274 @@ function drawSparkFallback(id,assetId){
 
 async function init(){if(!sb){$('authNote').textContent='Per attivare l’accesso inserisci la Publishable Key nel file config.js.';return}const {data:{session:s},error}=await sb.auth.getSession();if(error)toast(error.message);const recoveryLink=location.hash.includes('type=recovery')||location.search.includes('type=recovery');if(recoveryLink){$('authScreen').hidden=false;$('appScreen').hidden=true;authMode('recovery')}else if(s)await enter(s);sb.auth.onAuthStateChange((event,newSession)=>{if(event==='SIGNED_OUT'){if(mode!=='recovery')exit()}else if(event==='PASSWORD_RECOVERY'){session=null;$('appScreen').hidden=true;$('authScreen').hidden=false;authMode('recovery');toast('Inserisci una nuova password per completare il recupero.');}else if(event==='SIGNED_IN'&&newSession&&!session&&mode!=='recovery')setTimeout(()=>enter(newSession),0)});setInterval(()=>{if(session)fetchQuotes()},60000)}init();
 
-// === IBAN Management ===
-async function getClientIban(userId) {
-  const {data, error} = await sb.from('client_ibans').select('*').eq('user_id', userId).maybeSingle();
-  if (error) { console.warn('IBAN fetch error', error); return null; }
-  return data;
+// ============================================================
+// YOUNGEXCHANGE - MODULO IBAN ADMINISTRATIVO
+// ============================================================
+
+let ibanRecords = [];
+let ibanEditId = null;
+
+function cleanIban(iban) {
+    return String(iban || '').toUpperCase().replace(/\s/g, '');
 }
 
-async function saveClientIban(userId, iban, bankName, holder, notes) {
-  const {error} = await sb.from('client_ibans').upsert({
-    user_id: userId,
-    iban: iban.trim(),
-    bank_name: bankName?.trim() || null,
-    account_holder: holder?.trim() || null,
-    notes: notes?.trim() || null
-  }, {onConflict: 'user_id'});
-  if (error) throw error;
-  toast('IBAN salvato');
+function formatIbanDisplay(iban) {
+    const clean = cleanIban(iban);
+    return clean.replace(/(.{4})/g, '$1 ').trim();
 }
 
-async function createDepositRequest(userId) {
-  const {error} = await sb.from('deposit_requests').insert({user_id: userId, status: 'pending'});
-  if (error) console.warn('Deposit request error', error);
+function validateIban(iban) {
+    const clean = cleanIban(iban);
+    if (!clean || clean.length < 15 || clean.length > 34) return false;
+    if (!/^[A-Z]{2}[0-9A-Z]+$/.test(clean)) return false;
+    return true;
 }
 
-async function getPendingDepositRequests() {
-  const {data, error} = await sb.from('deposit_requests').select('*, user:user_id(email)').eq('status', 'pending').order('created_at', {ascending: false});
-  if (error) { console.warn('Pending requests error', error); return []; }
-  return data || [];
+function validateBic(bic) {
+    if (!bic) return true;
+    const clean = String(bic).toUpperCase().replace(/\s/g, '');
+    return /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(clean);
 }
 
-async function renderAdminIbanSection() {
-  const users = await adminRpc('list_users') || [];
-  const pending = await getPendingDepositRequests();
-  return `
-    <div style="display:grid;gap:18px">
-      <section class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-          <span style="color:#38e5a3">📄</span>
-          <h3 style="margin:0">Nuovo IBAN</h3>
-        </div>
-        <div class="form-grid">
-          <label>Cliente
-            <select id="ibanUserSelect">
-              <option value="">— Seleziona cliente —</option>
-              ${users.map(u => '<option value="' + u.id + '">' + esc(u.email) + '</option>').join('')}
-            </select>
-          </label>
-          <label>Banca
-            <input id="ibanBank" placeholder="Nome banca" />
-          </label>
-          <label>IBAN
-            <input id="ibanInput" placeholder="IT60X0542811101000000123456" />
-          </label>
-          <label>Intestatario
-            <input id="ibanHolder" placeholder="Nome intestatario" />
-          </label>
-        </div>
-        <label style="margin-top:12px">Note
-          <input id="ibanNotes" placeholder="Note facoltative" />
-        </label>
-        <button class="primary" style="margin-top:16px" onclick="saveIbanFromForm()">📄 Salva IBAN</button>
-      </section>
-      <section class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3 style="margin:0">🕐 Richieste deposito in attesa (${pending.length})</h3>
-          <button class="ghost" onclick="location.reload()">🔄 Aggiorna</button>
-        </div>
-        ${pending.length ? adminTable(pending, [
-          ['Data', r => adminDate(r.created_at)],
-          ['Cliente', r => esc(r.user?.email || r.user_id)],
-          ['Stato', r => '<span class="tag">In attesa</span>'],
-          ['Azione', r => '<button class="secondary-btn" onclick="resolveDepositRequest(\'' + r.id + '\')">Risolvi →</button>']
-        ]) : '<p class="small">Nessuna richiesta in attesa.</p>'}
-      </section>
-    </div>
-  `;
-}
-
-async function saveIbanFromForm() {
-  const userId = $('ibanUserSelect')?.value;
-  const iban = $('ibanInput')?.value;
-  if (!userId || !iban) { toast('Seleziona cliente e inserisci IBAN'); return; }
-  try {
-    await saveClientIban(userId, iban, $('ibanBank')?.value, $('ibanHolder')?.value, $('ibanNotes')?.value);
-    location.hash = '#admin?section=iban';
-    location.reload();
-  } catch(e) { toast('Errore: ' + e.message); }
-}
-
-async function resolveDepositRequest(id) {
-  const {error} = await sb.from('deposit_requests').update({status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: session.user.id}).eq('id', id);
-  if (error) { toast('Errore: ' + error.message); return; }
-  toast('Richiesta risolta');
-  location.reload();
-}
-
-// Override deposit action
-const originalAction = action;
-action = async function(type) {
-  if (type === 'deposit' && session) {
-    const iban = await getClientIban(session.user.id);
-    if (iban) {
-      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Coordinate bancarie</h3><p class="small"><strong>IBAN:</strong> ${esc(iban.iban)}</p>${iban.bank_name ? '<p class="small"><strong>Banca:</strong> ' + esc(iban.bank_name) + '</p>' : ''}${iban.account_holder ? '<p class="small"><strong>Intestatario:</strong> ' + esc(iban.account_holder) + '</p>' : ''}<p class="small" style="margin-top:12px;color:#8da79b">Usa queste coordinate per il bonifico.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
-    } else {
-      await createDepositRequest(session.user.id);
-      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Conto in preparazione</h3><div class="ye-eur-spinner"></div><p class="small">Le tue coordinate bancarie sono in fase di preparazione. Riceverai una notifica quando saranno pronte.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+async function loadIbanRecords() {
+    if (!sb || !session || !isAdmin) return [];
+    try {
+        const rows = await adminRpc('admin_list_ibans');
+        ibanRecords = rows || [];
+        return ibanRecords;
+    } catch (e) {
+        console.warn('Errore caricamento IBAN:', e);
+        ibanRecords = [];
+        return [];
     }
-    return;
-  }
-  return originalAction(type);
-};
+}
+
+async function saveIbanAdmin() {
+    const userId = $('ibanUserId')?.value?.trim();
+    const iban = $('ibanInput')?.value?.trim();
+    const bankName = $('ibanBankName')?.value?.trim() || null;
+    const holder = $('ibanHolder')?.value?.trim() || null;
+    const bic = $('ibanBic')?.value?.trim() || null;
+    const notes = $('ibanNotes')?.value?.trim() || null;
+
+    if (!ibanEditId && !userId) { toast('Seleziona un cliente'); return; }
+    if (!iban || !validateIban(iban)) { toast('IBAN non valido'); $('ibanInput')?.focus(); return; }
+    if (bic && !validateBic(bic)) { toast('BIC/SWIFT non valido'); $('ibanBic')?.focus(); return; }
+
+    const btn = $('ibanSaveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvataggio…'; }
+
+    try {
+        await adminRpc('admin_upsert_iban', {
+            p_id: ibanEditId || null,
+            p_user_id: ibanEditId ? null : userId,
+            p_iban: cleanIban(iban),
+            p_bank_name: bankName,
+            p_account_holder: holder,
+            p_bic_swift: bic ? bic.toUpperCase().replace(/\s/g, '') : null,
+            p_notes: notes
+        });
+        toast(ibanEditId ? 'IBAN modificato con successo' : 'IBAN salvato con successo');
+        resetIbanForm();
+        await renderIbanAdminList();
+    } catch (err) {
+        adminErr(err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = ibanEditId ? '💾 Modifica' : '💾 Salva'; }
+    }
+}
+
+async function deleteIbanAdmin(id) {
+    if (!confirm('Eliminare questo IBAN? L\'operazione non è reversibile.')) return;
+    try {
+        await adminRpc('admin_delete_iban', { p_id: id });
+        toast('IBAN eliminato');
+        await renderIbanAdminList();
+    } catch (err) {
+        adminErr(err);
+    }
+}
+
+async function editIbanAdmin(id) {
+    const record = ibanRecords.find(r => r.id === id);
+    if (!record) { toast('Record non trovato'); return; }
+
+    ibanEditId = id;
+    const userSelectWrap = $('ibanUserSelectWrap');
+    if (userSelectWrap) userSelectWrap.style.display = 'none';
+
+    const ibanInput = $('ibanInput');
+    const bankInput = $('ibanBankName');
+    const holderInput = $('ibanHolder');
+    const bicInput = $('ibanBic');
+    const notesInput = $('ibanNotes');
+
+    if (ibanInput) ibanInput.value = record.iban || '';
+    if (bankInput) bankInput.value = record.bank_name || '';
+    if (holderInput) holderInput.value = record.account_holder || '';
+    if (bicInput) bicInput.value = record.bic_swift || '';
+    if (notesInput) notesInput.value = record.notes || '';
+
+    const saveBtn = $('ibanSaveBtn');
+    const cancelBtn = $('ibanCancelBtn');
+    const formTitle = $('ibanFormTitle');
+
+    if (saveBtn) saveBtn.textContent = '💾 Modifica';
+    if (cancelBtn) cancelBtn.hidden = false;
+    if (formTitle) formTitle.textContent = 'Modifica IBAN — ' + esc(record.email || record.display_name || record.user_id);
+
+    const form = $('ibanAdminForm');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelIbanEdit() {
+    resetIbanForm();
+}
+
+function resetIbanForm() {
+    ibanEditId = null;
+    const form = $('ibanAdminForm');
+    if (form) form.reset();
+
+    const userSelectWrap = $('ibanUserSelectWrap');
+    if (userSelectWrap) userSelectWrap.style.display = '';
+
+    const saveBtn = $('ibanSaveBtn');
+    const cancelBtn = $('ibanCancelBtn');
+    const formTitle = $('ibanFormTitle');
+
+    if (saveBtn) saveBtn.textContent = '💾 Salva';
+    if (cancelBtn) cancelBtn.hidden = true;
+    if (formTitle) formTitle.textContent = 'Nuovo IBAN';
+}
+
+async function renderIbanAdminList() {
+    const container = $('ibanAdminList');
+    if (!container) return;
+
+    container.innerHTML = '<p class="small">Caricamento IBAN…</p>';
+    await loadIbanRecords();
+
+    if (!ibanRecords.length) {
+        container.innerHTML = '<p class="small">Nessun IBAN registrato. Usa il form qui sopra per aggiungerne uno.</p>';
+        return;
+    }
+
+    const columns = [
+        ['Cliente', r => adminCell(r.email || r.display_name || r.user_id)],
+        ['IBAN', r => '<code style="font-family:monospace;font-size:12px;color:#38e5a3">' + adminCell(formatIbanDisplay(r.iban)) + '</code>'],
+        ['Banca', r => adminCell(r.bank_name || '—')],
+        ['Intestatario', r => adminCell(r.account_holder || '—')],
+        ['BIC/SWIFT', r => adminCell(r.bic_swift || '—')],
+        ['Note', r => adminCell(r.notes ? (r.notes.length > 25 ? r.notes.slice(0, 25) + '…' : r.notes) : '—')],
+        ['Aggiornato', r => adminCell(adminDate(r.updated_at))],
+        ['Azioni', r =>
+            '<button type="button" class="secondary-btn" style="padding:8px 12px;font-size:11px" onclick="editIbanAdmin(\'' + esc(r.id) + '\')">✏️ Modifica</button> ' +
+            '<button type="button" class="secondary-btn" style="padding:8px 12px;font-size:11px" onclick="deleteIbanAdmin(\'' + esc(r.id) + '\')">🗑️ Elimina</button>'
+        ]
+    ];
+
+    container.innerHTML = adminTable(ibanRecords, columns);
+}
+
+async function buildIbanAdminSection(users) {
+    const userOptions = (users || []).map(u =>
+        '<option value="' + esc(u.user_id) + '">' + esc(u.email || u.display_name || u.user_id) + '</option>'
+    ).join('');
+
+    return `
+    <div style="display:grid;gap:22px">
+        <section class="card" id="ibanAdminForm">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+                <span style="color:#38e5a3;font-size:20px">🏦</span>
+                <h3 style="margin:0" id="ibanFormTitle">Nuovo IBAN</h3>
+            </div>
+            <form onsubmit="event.preventDefault(); saveIbanAdmin();">
+                <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+                    <div id="ibanUserSelectWrap">
+                        <label>ID Cliente (utente)</label>
+                        <select id="ibanUserId" required
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px">
+                            <option value="">— Seleziona cliente —</option>
+                            ${userOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label>IBAN</label>
+                        <input id="ibanInput" type="text" maxlength="34" required
+                            placeholder="IT60X0542811101000000123456"
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px;text-transform:uppercase">
+                    </div>
+                    <div>
+                        <label>Nome della banca</label>
+                        <input id="ibanBankName" type="text" maxlength="120"
+                            placeholder="Es. UniCredit S.p.A."
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px">
+                    </div>
+                    <div>
+                        <label>Intestatario del conto</label>
+                        <input id="ibanHolder" type="text" maxlength="120"
+                            placeholder="Nome e cognome intestatario"
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px">
+                    </div>
+                    <div>
+                        <label>Codice BIC/SWIFT</label>
+                        <input id="ibanBic" type="text" maxlength="11"
+                            placeholder="UNCRITM1XXX"
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px;text-transform:uppercase">
+                    </div>
+                </div>
+                <div style="margin-top:14px">
+                    <label>Eventuali note</label>
+                    <input id="ibanNotes" type="text" maxlength="500"
+                        placeholder="Note facoltative (max 500 caratteri)"
+                        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a4a3a;background:#0f1f17;color:#eafff2;font-size:14px">
+                </div>
+                <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap">
+                    <button type="submit" class="primary" id="ibanSaveBtn">💾 Salva</button>
+                    <button type="button" class="secondary-btn" id="ibanCancelBtn" onclick="cancelIbanEdit()" hidden>Annulla</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span style="color:#38e5a3;font-size:20px">📋</span>
+                    <h3 style="margin:0">IBAN registrati</h3>
+                </div>
+                <button type="button" class="secondary-btn" onclick="renderIbanAdminList()">🔄 Aggiorna lista</button>
+            </div>
+            <div id="ibanAdminList">
+                <p class="small">Caricamento IBAN…</p>
+            </div>
+        </section>
+    </div>
+    `;
+}
+
+async function adminIbanSection(workspace) {
+    if (!workspace) return;
+    workspace.innerHTML = '<section class="card"><h3>Caricamento IBAN…</h3></section>';
+
+    try {
+        const users = await adminRpc('admin_list_users');
+        const html = await buildIbanAdminSection(users);
+
+        if (workspace.isConnected) {
+            workspace.innerHTML =
+                '<section class="card">' +
+                '<h3>🏦 Gestione IBAN Clienti</h3>' +
+                '<p class="small">Crea, modifica e gestisci le coordinate bancarie associate ai conti cliente. Ogni utente può avere un solo IBAN. I campi sono liberamente compilabili.</p>' +
+                '</section>' + html;
+            await renderIbanAdminList();
+        }
+    } catch (e) {
+        adminErr(e);
+        if (workspace.isConnected) {
+            workspace.innerHTML = '<section class="card"><h3>Errore</h3><p class="small">' + esc(e.message || String(e)) + '</p></section>';
+        }
+    }
+}
 
 })();
