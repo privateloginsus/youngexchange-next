@@ -419,20 +419,46 @@ resolveDepositRequest(id) {
   location.reload();
 }
 
-// Override deposit action
-const originalAction = action;
+// ============================================================
+// COLLEGAMENTO CLIENTE: visualizza IBAN al click su Deposita
+// ============================================================
+
+const _originalAction = action;
 action = async function(type) {
-  if (type === 'deposit' && session) {
-    const iban = await getClientIban(session.user.id);
-    if (iban) {
-      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Coordinate bancarie</h3><p class="small"><strong>IBAN:</strong> ${esc(iban.iban)}</p>${iban.bank_name ? '<p class="small"><strong>Banca:</strong> ' + esc(iban.bank_name) + '</p>' : ''}${iban.account_holder ? '<p class="small"><strong>Intestatario:</strong> ' + esc(iban.account_holder) + '</p>' : ''}<p class="small" style="margin-top:12px;color:#8da79b">Usa queste coordinate per il bonifico.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
-    } else {
-      await createDepositRequest(session.user.id);
-      showModal(`<div class="ye-eur-availability"><div class="eyebrow">DEPOSITO EUR</div><h3>Conto in preparazione</h3><div class="ye-eur-spinner"></div><p class="small">Le tue coordinate bancarie sono in fase di preparazione. Riceverai una notifica quando saranno pronte.</p><button class="primary" style="margin-top:16px" onclick="closeModal()">Chiudi</button></div>`);
+    if (type === 'deposit' && sb && session) {
+        try {
+            const { data, error } = await sb.rpc('get_client_iban', { p_user_id: session.user.id });
+            if (error) throw error;
+            const iban = data && data[0] ? data[0] : null;
+
+            if (iban && iban.iban) {
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.innerHTML = '<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Coordinate bancarie"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / DEPOSITO EUR</div><h3>Coordinate bancarie</h3><div style="display:grid;gap:14px;margin-top:18px">' +
+                    '<div class="asset-row" style="border-bottom:1px solid #20352c;padding:12px 0"><span class="muted">IBAN</span><strong style="font-family:monospace;font-size:15px">' + esc(iban.iban) + '</strong></div>' +
+                    (iban.bank_name ? '<div class="asset-row" style="border-bottom:1px solid #20352c;padding:12px 0"><span class="muted">Banca</span><strong>' + esc(iban.bank_name) + '</strong></div>' : '') +
+                    (iban.account_holder ? '<div class="asset-row" style="border-bottom:1px solid #20352c;padding:12px 0"><span class="muted">Intestatario</span><strong>' + esc(iban.account_holder) + '</strong></div>' : '') +
+                    (iban.bic_swift ? '<div class="asset-row" style="border-bottom:1px solid #20352c;padding:12px 0"><span class="muted">BIC/SWIFT</span><strong style="font-family:monospace">' + esc(iban.bic_swift) + '</strong></div>' : '') +
+                    (iban.notes ? '<div style="padding:10px 0;font-size:12px;color:var(--muted)"><span>' + esc(iban.notes) + '</span></div>' : '') +
+                    '</div><p class="small" style="margin-top:18px;color:#8da79b">Usa queste coordinate per effettuare il bonifico. L\'accredito verra\' verificato dall\'amministrazione.</p></div>';
+                document.body.append(overlay);
+                overlay.querySelector('.modal-close').onclick = () => overlay.remove();
+                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            } else {
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.innerHTML = '<div class="modal ye-operation" role="dialog" aria-modal="true" aria-label="Conto in preparazione"><button class="modal-close" aria-label="Chiudi">×</button><div class="eyebrow">YOUNGEXCHANGE / DEPOSITO EUR</div><h3>Conto in preparazione</h3><div class="ye-eur-spinner" style="margin:20px auto"></div><p class="small">Le tue coordinate bancarie sono in fase di preparazione. Riceverai una notifica quando saranno pronte.</p><button class="primary full mt" onclick="this.closest(\'.modal-overlay\').remove()">Chiudi</button></div>';
+                document.body.append(overlay);
+                overlay.querySelector('.modal-close').onclick = () => overlay.remove();
+                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            }
+        } catch (err) {
+            toast('Errore caricamento coordinate: ' + (err.message || String(err)));
+            _originalAction(type);
+        }
+        return;
     }
-    return;
-  }
-  return originalAction(type);
+    return _originalAction(type);
 };
 
 })();yeOhlcInFlight.set(assetId,job);try{return await job}finally{yeOhlcInFlight.delete(assetId)}
